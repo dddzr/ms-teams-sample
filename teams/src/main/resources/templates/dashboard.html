@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 - MS Teams API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+        }
+        
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result-box {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .result-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #333;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .user-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-item label {
+            display: block;
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        
+        .info-item span {
+            display: block;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 14px;
+            padding: 20px;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #fcc;
+            margin-top: 15px;
+        }
+        
+        .team-item, .channel-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .team-item:hover, .channel-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        
+        .team-item h4, .channel-item h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .team-item p, .channel-item p {
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .input-group input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 MS Teams API 대시보드</h1>
+        <a href="/logout" class="btn-logout">로그아웃</a>
+    </div>
+    
+    <div class="container">
+        <!-- 사용자 정보 섹션 -->
+        <div class="section">
+            <h2>👤 내 정보</h2>
+            <button class="btn" onclick="loadUserInfo()">사용자 정보 조회</button>
+            <div id="userInfo"></div>
+        </div>
+        
+        <!-- Teams 목록 섹션 -->
+        <div class="section">
+            <h2>📋 내 Teams</h2>
+            <button class="btn" onclick="loadTeams()">Teams 목록 조회</button>
+            <div id="teamsList"></div>
+        </div>
+        
+        <!-- 채널 목록 섹션 -->
+        <div class="section">
+            <h2>💬 채널 목록</h2>
+            <div class="input-group">
+                <input type="text" id="teamIdForChannels" placeholder="Team ID 입력">
+                <button class="btn" onclick="loadChannels()">채널 조회</button>
+            </div>
+            <div id="channelsList"></div>
+        </div>
+        
+        <!-- 메시지 조회 섹션 -->
+        <div class="section">
+            <h2>✉️ 채널 메시지</h2>
+            <div class="input-group">
+                <input type="text" id="teamIdForMessages" placeholder="Team ID 입력">
+                <input type="text" id="channelIdForMessages" placeholder="Channel ID 입력">
+                <button class="btn" onclick="loadMessages()">메시지 조회</button>
+            </div>
+            <div id="messagesList"></div>
+        </div>
+    </div>
+    
+    <script>
+        // 사용자 정보 조회
+        async function loadUserInfo() {
+            const container = document.getElementById('userInfo');
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch('/api/me');
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const user = await response.json();
+                container.innerHTML = `
+                    <div class="user-info">
+                        <div class="info-item">
+                            <label>이름</label>
+                            <span>${user.displayName || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>이메일</label>
+                            <span>${user.mail || user.userPrincipalName || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>직책</label>
+                            <span>${user.jobTitle || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>ID</label>
+                            <span>${user.id}</span>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // Teams 목록 조회
+        async function loadTeams() {
+            const container = document.getElementById('teamsList');
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch('/api/teams');
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const teams = await response.json();
+                if (teams.length === 0) {
+                    container.innerHTML = '<p>소속된 팀이 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = teams.map(team => `
+                    <div class="team-item" onclick="selectTeam('${team.id}')">
+                        <h4>${team.displayName}</h4>
+                        <p>${team.description || '설명 없음'}</p>
+                        <p style="font-size: 11px; color: #999;">ID: ${team.id}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // Team 선택 시 ID 자동 입력
+        function selectTeam(teamId) {
+            document.getElementById('teamIdForChannels').value = teamId;
+            document.getElementById('teamIdForMessages').value = teamId;
+        }
+        
+        // 채널 목록 조회
+        async function loadChannels() {
+            const teamId = document.getElementById('teamIdForChannels').value.trim();
+            const container = document.getElementById('channelsList');
+            
+            if (!teamId) {
+                container.innerHTML = '<div class="error">Team ID를 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch(`/api/teams/${teamId}/channels`);
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const channels = await response.json();
+                if (channels.length === 0) {
+                    container.innerHTML = '<p>채널이 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = channels.map(channel => `
+                    <div class="channel-item" onclick="selectChannel('${channel.id}')">
+                        <h4>${channel.displayName}</h4>
+                        <p>${channel.description || '설명 없음'}</p>
+                        <p style="font-size: 11px; color: #999;">ID: ${channel.id}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 채널 선택 시 ID 자동 입력
+        function selectChannel(channelId) {
+            document.getElementById('channelIdForMessages').value = channelId;
+        }
+        
+        // 메시지 조회
+        async function loadMessages() {
+            const teamId = document.getElementById('teamIdForMessages').value.trim();
+            const channelId = document.getElementById('channelIdForMessages').value.trim();
+            const container = document.getElementById('messagesList');
+            
+            if (!teamId || !channelId) {
+                container.innerHTML = '<div class="error">Team ID와 Channel ID를 모두 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch(`/api/teams/${teamId}/channels/${channelId}/messages`);
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const messages = await response.json();
+                if (messages.length === 0) {
+                    container.innerHTML = '<p>메시지가 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = '<div class="result-box"><pre>' + 
+                    JSON.stringify(messages, null, 2) + 
+                    '</pre></div>';
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
