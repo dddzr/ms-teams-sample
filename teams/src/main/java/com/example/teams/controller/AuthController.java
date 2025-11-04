@@ -1,13 +1,14 @@
 package com.example.teams.controller;
 
 import com.example.teams.service.AuthService;
-import com.example.teams.service.TeamsService;
+import com.example.teams.service.GraphClientService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.view.RedirectView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -16,7 +17,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class AuthController {
     
     private final AuthService authService;
-    private final TeamsService teamsService;
+    private final GraphClientService graphClientService;
     
     /**
      * OAuth Callback 처리
@@ -51,7 +52,7 @@ public class AuthController {
             session.setAttribute("accessToken", accessToken);
             
             // Graph Client 초기화
-            teamsService.initializeGraphClient(accessToken);
+            graphClientService.initializeGraphClient(accessToken);
             
             log.info("인증 성공!");
             redirectAttributes.addFlashAttribute("success", 
@@ -66,6 +67,32 @@ public class AuthController {
         }
     }
     
+    /**
+     * 계정 선택 창을 강제로 띄워 로그인
+     */
+    @GetMapping("/login/select-account")
+    public RedirectView selectAccountLogin() {
+        String url = authService.getAuthorizationUrlWith("select_account", null);
+        return new RedirectView(url);
+    }
+
+    /**
+     * 로그인 창 강제 표시
+     */
+    @GetMapping("/login/force")
+    public RedirectView forceLogin() {
+        String url = authService.getAuthorizationUrlWith("login", null);
+        return new RedirectView(url);
+    }
+
+    /**
+     * 입력한 계정으로 로그인 힌트를 전달하여 로그인
+     */
+    @GetMapping("/login/with-hint")
+    public RedirectView loginWithHint(@RequestParam("login_hint") String loginHint) {
+        String url = authService.getAuthorizationUrlWith("select_account", loginHint);
+        return new RedirectView(url);
+    }
     /**
      * 로그아웃
      */

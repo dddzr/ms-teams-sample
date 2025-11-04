@@ -8,6 +8,11 @@ import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +51,34 @@ public class AuthService {
                 JSONObject json = new JSONObject(responseBody);
                 String accessToken = json.getString("access_token");
                 
+                // 토큰 응답에서 scope 확인 (디버깅용)
+                if (json.has("scope")) {
+                    String scope = json.getString("scope");
+                    log.info("토큰에 포함된 scope: {}", scope);
+                } else {
+                    log.warn("토큰 응답에 scope 정보가 없습니다");
+                }
+                
+                // JWT claims에서 테넌트/계정 유형 로깅
+                try {
+                    String[] parts = accessToken.split("\\.");
+                    if (parts.length == 3) {
+                        String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
+                        JSONObject claims = new JSONObject(payloadJson);
+                        String tid = claims.optString("tid", "unknown");
+                        String iss = claims.optString("iss", "unknown");
+                        String aud = claims.optString("aud", "unknown");
+                        String preferredUsername = claims.optString("preferred_username", claims.optString("upn", ""));
+                        String tenantType = iss.contains("consumers") ? "personal (MSA)" : (iss.contains("organizations") || iss.contains("common")) ? "work/school (Org)" : "unknown";
+                        log.info("JWT claims: tid={}, iss={}, aud={}, preferred_username={} ", tid, iss, aud, preferredUsername);
+                        log.info("계정 유형 추정: {}", tenantType);
+                    }
+                } catch (Exception ex) {
+                    log.warn("JWT claims 디코딩 실패: {}", ex.getMessage());
+                }
+
                 log.info("Access Token 획득 성공");
+                log.info("Access Token: {}", accessToken);
                 return accessToken;
             }
         } catch (IOException e) {
@@ -60,6 +92,28 @@ public class AuthService {
      */
     public String getAuthorizationUrl() {
         return azureAdConfig.getAuthorizationUrl();
+    }
+
+    /**
+     * 추가 파라미터(prompt, login_hint)를 포함한 Authorization URL 생성
+     */
+    public String getAuthorizationUrlWith(String prompt, String loginHint) {
+        String base = azureAdConfig.getAuthorizationUrl();
+        StringBuilder sb = new StringBuilder(base);
+        boolean hasQuery = base.contains("?");
+        String sep = hasQuery ? "&" : "?";
+        try {
+            if (prompt != null && !prompt.isBlank()) {
+                sb.append(sep).append("prompt=").append(URLEncoder.encode(prompt, StandardCharsets.UTF_8.toString()));
+                sep = "&";
+            }
+            if (loginHint != null && !loginHint.isBlank()) {
+                sb.append(sep).append("login_hint=").append(URLEncoder.encode(loginHint, StandardCharsets.UTF_8.toString()));
+            }
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("Authorization URL 생성 실패", e);
+        }
+        return sb.toString();
     }
 }
 

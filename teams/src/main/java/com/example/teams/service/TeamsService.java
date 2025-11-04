@@ -1,54 +1,34 @@
 package com.example.teams.service;
 
-import com.azure.core.credential.AccessToken;
-import com.azure.core.credential.TokenCredential;
-import com.azure.core.credential.TokenRequestContext;
 import com.example.teams.dto.*;
+import com.example.teams.util.GraphApiErrorHandler;
 import com.microsoft.graph.models.User;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Microsoft Teams 관련 API를 처리하는 서비스
+ * Teams, Channels, Channel Messages만 처리합니다.
+ */
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class TeamsService {
     
-    private GraphServiceClient graphClient;
+    private final GraphClientService graphClientService;
+    private final GraphApiErrorHandler errorHandler;
     
     /**
-     * Access Token으로 Graph Client 초기화
-     */
-    public void initializeGraphClient(String accessToken) {
-        try {
-            // Access Token을 사용하는 커스텀 TokenCredential 생성
-            TokenCredential tokenCredential = new TokenCredential() {
-                @Override
-                public Mono<AccessToken> getToken(TokenRequestContext request) {
-                    // 1시간 후 만료 설정 (실제로는 토큰의 만료 시간을 사용해야 함)
-                    OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(1);
-                    return Mono.just(new AccessToken(accessToken, expiresAt));
-                }
-            };
-            
-            graphClient = new GraphServiceClient(tokenCredential);
-                
-            log.info("Graph Client 초기화 완료");
-        } catch (Exception e) {
-            log.error("Graph Client 초기화 실패", e);
-            throw new RuntimeException("Graph Client 초기화 실패", e);
-        }
-    }
-    
-    /**
-     * 현재 사용자 정보 조회
+     * 현재 사용자 정보 조회 (공통 기능)
      */
     public UserDto getCurrentUser() {
         try {
+            GraphServiceClient graphClient = graphClientService.getGraphClient();
             User user = graphClient.me().get();
             
             return UserDto.builder()
@@ -59,8 +39,8 @@ public class TeamsService {
                 .jobTitle(user.getJobTitle())
                 .build();
         } catch (Exception e) {
-            log.error("사용자 정보 조회 실패", e);
-            throw new RuntimeException("사용자 정보 조회 실패", e);
+            errorHandler.handle(e, "사용자 정보 조회");
+            return null; // 도달하지 않음
         }
     }
     
@@ -70,6 +50,7 @@ public class TeamsService {
     public List<TeamDto> getUserTeams() {
         try {
             log.info("Teams 목록 조회 시작...");
+            GraphServiceClient graphClient = graphClientService.getGraphClient();
             var teams = graphClient.me().joinedTeams().get();
             
             List<TeamDto> teamList = new ArrayList<>();
@@ -87,17 +68,9 @@ public class TeamsService {
             
             log.info("Teams 조회 완료: {} 개", teamList.size());
             return teamList;
-        } catch (com.microsoft.graph.models.odataerrors.ODataError e) {
-            log.error("Teams 조회 실패 - OData 에러: {}", e.getMessage(), e);
-            // 라이선스 문제인 경우 빈 리스트 반환
-            if (e.getMessage() != null && e.getMessage().contains("license")) {
-                log.warn("Teams 라이선스가 없거나 가입된 팀이 없습니다. 빈 리스트를 반환합니다.");
-                return new ArrayList<>();
-            }
-            throw new RuntimeException("Teams 조회 실패: " + e.getMessage(), e);
         } catch (Exception e) {
-            log.error("Teams 조회 실패 - 일반 에러", e);
-            throw new RuntimeException("Teams 조회 실패: " + e.getMessage(), e);
+            errorHandler.handle(e, "Teams 조회");
+            return new ArrayList<>(); // 도달하지 않음
         }
     }
     
@@ -106,6 +79,7 @@ public class TeamsService {
      */
     public List<ChannelDto> getTeamChannels(String teamId) {
         try {
+            GraphServiceClient graphClient = graphClientService.getGraphClient();
             var channels = graphClient.teams().byTeamId(teamId).channels().get();
             
             List<ChannelDto> channelList = new ArrayList<>();
@@ -125,8 +99,8 @@ public class TeamsService {
             log.info("Team {} 의 채널 조회 완료: {} 개", teamId, channelList.size());
             return channelList;
         } catch (Exception e) {
-            log.error("채널 조회 실패 - Team ID: {}", teamId, e);
-            throw new RuntimeException("채널 조회 실패", e);
+            errorHandler.handle(e, "채널 조회");
+            return new ArrayList<>(); // 도달하지 않음
         }
     }
     
@@ -135,6 +109,7 @@ public class TeamsService {
      */
     public List<MessageDto> getChannelMessages(String teamId, String channelId) {
         try {
+            GraphServiceClient graphClient = graphClientService.getGraphClient();
             var messages = graphClient.teams().byTeamId(teamId)
                 .channels().byChannelId(channelId)
                 .messages()
@@ -163,9 +138,35 @@ public class TeamsService {
             log.info("채널 메시지 조회 완료: {} 개", messageList.size());
             return messageList;
         } catch (Exception e) {
-            log.error("메시지 조회 실패 - Team: {}, Channel: {}", teamId, channelId, e);
-            throw new RuntimeException("메시지 조회 실패", e);
+            errorHandler.handle(e, "채널 메시지 조회");
+            return new ArrayList<>(); // 도달하지 않음
         }
     }
+    
+    /**
+     * 채널 생성
+     */
+    public ChannelDto createChannel(String teamId, ChannelCreateRequest request) {
+        try {
+            GraphServiceClient graphClient = graphClientService.getGraphClient();
+            com.microsoft.graph.models.Channel channel = new com.microsoft.graph.models.Channel();
+            channel.setDisplayName(request.getDisplayName());
+            channel.setDescription(request.getDescription());
+            
+            var createdChannel = graphClient.teams().byTeamId(teamId).channels()
+                .post(channel);
+            
+            return ChannelDto.builder()
+                .id(createdChannel.getId())
+                .displayName(createdChannel.getDisplayName())
+                .description(createdChannel.getDescription())
+                .webUrl(createdChannel.getWebUrl())
+                .membershipType(createdChannel.getMembershipType() != null ? 
+                    createdChannel.getMembershipType().toString() : "standard")
+                .build();
+        } catch (Exception e) {
+            errorHandler.handle(e, "채널 생성");
+            return null; // 도달하지 않음
+        }
+    }   
 }
-

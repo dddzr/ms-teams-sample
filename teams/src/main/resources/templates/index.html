@@ -72,6 +72,37 @@
         .btn-login:active {
             transform: translateY(0);
         }
+        .login-inline {
+            margin-top: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+        .login-input {
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .btn-secondary {
+            background: #eef1ff;
+            color: #4b57cc;
+            border: 1px solid #dfe4ff;
+            padding: 12px 16px;
+            font-size: 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .btn-link {
+            background: transparent;
+            color: #4b57cc;
+            border: none;
+            padding: 8px 0;
+            font-size: 14px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
         
         .alert {
             padding: 15px;
@@ -138,6 +169,34 @@
         <a th:href="${authUrl}" class="btn-login">
             Microsoft 계정으로 로그인
         </a>
+        
+        <div class="login-inline">
+            <input id="loginHint" class="login-input" type="email" placeholder="계정 이메일 입력 (예: user@contoso.com)">
+            <button class="btn-secondary" onclick="loginWithHint()">해당 계정으로 로그인</button>
+        </div>
+        <div style="margin-top:8px;">
+            <button class="btn-link" onclick="selectAccount()">계정 선택 창 열기</button>
+            ·
+            <button class="btn-link" onclick="forceLogin()">로그인 창 강제 표시</button>
+        </div>
+        
+        <script>
+            function loginWithHint() {
+                var v = document.getElementById('loginHint').value.trim();
+                if (!v) {
+                    alert('계정 이메일을 입력하세요.');
+                    return;
+                }
+                const url = '/login/with-hint?login_hint=' + encodeURIComponent(v);
+                window.location.href = url;
+            }
+            function selectAccount() {
+                window.location.href = '/login/select-account';
+            }
+            function forceLogin() {
+                window.location.href = '/login/force';
+            }
+        </script>
         
         <div class="features">
             <h3>사용 가능한 기능</h3>

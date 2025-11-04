@@ -187,6 +187,7 @@ Team ID와 Channel ID를 입력하고 "메시지 조회" 버튼을 클릭하면 
 - [Microsoft Graph API 문서](https://docs.microsoft.com/graph/)
 - [Microsoft Teams API 문서](https://docs.microsoft.com/graph/api/resources/teams-api-overview)
 - [Azure AD 인증 문서](https://docs.microsoft.com/azure/active-directory/develop/)
+- [Azure AD OAuth 문서](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow)
 - [Microsoft Graph SDK for Java](https://github.com/microsoftgraph/msgraph-sdk-java)
 
 ## 🐛 트러블슈팅

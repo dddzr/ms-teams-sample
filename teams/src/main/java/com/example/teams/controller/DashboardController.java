@@ -1,6 +1,6 @@
 package com.example.teams.controller;
 
-import com.example.teams.service.TeamsService;
+import com.example.teams.service.GraphClientService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -12,7 +12,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 public class DashboardController {
     
-    private final TeamsService teamsService;
+    private final GraphClientService graphClientService;
     
     @GetMapping("/dashboard")
     public String dashboard(HttpSession session, Model model, 
@@ -27,7 +27,7 @@ public class DashboardController {
         
         try {
             // Graph Client 초기화
-            teamsService.initializeGraphClient(accessToken);
+            graphClientService.initializeGraphClient(accessToken);
             
             return "dashboard";
         } catch (Exception e) {

@@ -157,7 +157,7 @@
             margin-top: 15px;
         }
         
-        .team-item, .channel-item {
+        .team-item, .channel-item, .mail-item {
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
@@ -167,19 +167,66 @@
             transition: all 0.2s;
         }
         
-        .team-item:hover, .channel-item:hover {
+        .team-item:hover, .channel-item:hover, .mail-item:hover {
             border-color: #667eea;
             box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
         }
         
-        .team-item h4, .channel-item h4 {
+        .team-item h4, .channel-item h4, .mail-item h4 {
             color: #333;
             margin-bottom: 5px;
         }
         
-        .team-item p, .channel-item p {
+        .team-item p, .channel-item p, .mail-item p {
             color: #666;
             font-size: 13px;
+        }
+        
+        .mail-item {
+            cursor: default;
+        }
+        
+        .mail-item.unread {
+            background: #f0f7ff;
+            border-left: 4px solid #667eea;
+        }
+        
+        .mail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+        
+        .mail-subject {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .mail-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+        
+        .mail-preview {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+        
+        .mail-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            margin-left: 8px;
         }
         
         .input-group {
@@ -201,6 +248,10 @@
         .input-group input:focus {
             outline: none;
             border-color: #667eea;
+        }
+        
+        .input-group input[type="number"] {
+            min-width: 300px;
         }
     </style>
 </head>
@@ -244,6 +295,68 @@
                 <button class="btn" onclick="loadMessages()">메시지 조회</button>
             </div>
             <div id="messagesList"></div>
+        </div>
+        
+        <!-- 채팅(Chat) 섹션 -->
+        <div class="section">
+            <h2>💬 채팅</h2>
+            <button class="btn" onclick="loadChats()">채팅 목록 조회</button>
+            <div id="chatsList"></div>
+            <div class="input-group" style="margin-top: 20px;">
+                <input type="text" id="chatIdForMessages" placeholder="Chat ID 입력">
+                <button class="btn" onclick="loadChatMessages()">메시지 조회</button>
+                <button class="btn" onclick="loadChatMembers()">멤버 조회</button>
+            </div>
+            <div id="chatMessagesList"></div>
+            <div id="chatMembersList"></div>
+            <div class="input-group" style="margin-top: 20px;">
+                <input type="text" id="chatIdForSend" placeholder="Chat ID 입력">
+                <input type="text" id="chatMessageBody" placeholder="메시지 입력">
+                <button class="btn" onclick="sendChatMessage()">메시지 전송</button>
+            </div>
+            <div id="chatSendResult"></div>
+        </div>
+        
+        <!-- 모임(Meetings) 섹션 -->
+        <div class="section">
+            <h2>📅 온라인 미팅</h2>
+            <button class="btn" onclick="loadMeetings()">미팅 목록 조회</button>
+            <div id="meetingsList"></div>
+            <div class="input-group" style="margin-top: 20px;">
+                <input type="text" id="meetingSubject" placeholder="미팅 제목">
+                <input type="datetime-local" id="meetingStart" placeholder="시작 시간">
+                <input type="datetime-local" id="meetingEnd" placeholder="종료 시간">
+                <button class="btn" onclick="createMeeting()">미팅 생성</button>
+            </div>
+            <div id="meetingCreateResult"></div>
+        </div>
+        
+        <!-- 일정(Calendar) 섹션 -->
+        <div class="section">
+            <h2>📆 일정</h2>
+            <button class="btn" onclick="loadEvents()">일정 조회</button>
+            <div id="eventsList"></div>
+            <div class="input-group" style="margin-top: 20px;">
+                <input type="text" id="eventSubject" placeholder="일정 제목">
+                <input type="datetime-local" id="eventStart" placeholder="시작 시간">
+                <input type="datetime-local" id="eventEnd" placeholder="종료 시간">
+                <input type="text" id="eventLocation" placeholder="장소 (선택)">
+                <textarea id="eventBody" placeholder="내용 (선택)" style="min-width: 300px; padding: 10px; border: 1px solid #ddd; border-radius: 8px;"></textarea>
+                <button class="btn" onclick="createEvent()">일정 생성</button>
+            </div>
+            <div id="eventCreateResult"></div>
+        </div>
+        
+        <!-- 채널 생성 섹션 -->
+        <div class="section">
+            <h2>➕ 채널 생성</h2>
+            <div class="input-group">
+                <input type="text" id="channelTeamId" placeholder="Team ID 입력">
+                <input type="text" id="channelName" placeholder="채널 이름">
+                <input type="text" id="channelDescription" placeholder="채널 설명 (선택)">
+                <button class="btn" onclick="createChannel()">채널 생성</button>
+            </div>
+            <div id="channelCreateResult"></div>
         </div>
     </div>
     
@@ -381,6 +494,289 @@
                 container.innerHTML = '<div class="result-box"><pre>' + 
                     JSON.stringify(messages, null, 2) + 
                     '</pre></div>';
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 채팅 목록 조회
+        async function loadChats() {
+            const container = document.getElementById('chatsList');
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch('/api/chats');
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const chats = await response.json();
+                if (chats.length === 0) {
+                    container.innerHTML = '<p>채팅이 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = chats.map(chat => `
+                    <div class="team-item" onclick="selectChat('${chat.id}')">
+                        <h4>${chat.topic || '(제목 없음)'}</h4>
+                        <p>타입: ${chat.chatType}</p>
+                        <p style="font-size: 11px; color: #999;">ID: ${chat.id}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        function selectChat(chatId) {
+            document.getElementById('chatIdForMessages').value = chatId;
+            document.getElementById('chatIdForSend').value = chatId;
+        }
+        
+        // 채팅 메시지 조회
+        async function loadChatMessages() {
+            const chatId = document.getElementById('chatIdForMessages').value.trim();
+            const container = document.getElementById('chatMessagesList');
+            
+            if (!chatId) {
+                container.innerHTML = '<div class="error">Chat ID를 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch(`/api/chats/${chatId}/messages`);
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const messages = await response.json();
+                if (messages.length === 0) {
+                    container.innerHTML = '<p>메시지가 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = '<div class="result-box"><pre>' + 
+                    JSON.stringify(messages, null, 2) + '</pre></div>';
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 채팅 멤버 조회
+        async function loadChatMembers() {
+            const chatId = document.getElementById('chatIdForMessages').value.trim();
+            const container = document.getElementById('chatMembersList');
+            
+            if (!chatId) {
+                container.innerHTML = '<div class="error">Chat ID를 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch(`/api/chats/${chatId}/members`);
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const members = await response.json();
+                container.innerHTML = '<div class="result-box"><pre>' + 
+                    JSON.stringify(members, null, 2) + '</pre></div>';
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 채팅 메시지 전송
+        async function sendChatMessage() {
+            const chatId = document.getElementById('chatIdForSend').value.trim();
+            const body = document.getElementById('chatMessageBody').value.trim();
+            const container = document.getElementById('chatSendResult');
+            
+            if (!chatId || !body) {
+                container.innerHTML = '<div class="error">Chat ID와 메시지를 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">전송 중...</div>';
+            
+            try {
+                const response = await fetch(`/api/chats/${chatId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ body })
+                });
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const result = await response.json();
+                container.innerHTML = '<div class="result-box"><pre>' + 
+                    JSON.stringify(result, null, 2) + '</pre></div>';
+                document.getElementById('chatMessageBody').value = '';
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 미팅 목록 조회
+        async function loadMeetings() {
+            const container = document.getElementById('meetingsList');
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch('/api/me/onlineMeetings');
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const meetings = await response.json();
+                if (meetings.length === 0) {
+                    container.innerHTML = '<p>예정된 미팅이 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = meetings.map(meeting => {
+                    const startDate = meeting.startDateTime ? 
+                        new Date(meeting.startDateTime).toLocaleString('ko-KR') : 'N/A';
+                    const joinUrl = meeting.joinWebUrl || meeting.joinUrl || '';
+                    return `
+                        <div class="team-item">
+                            <h4>${meeting.subject || '(제목 없음)'}</h4>
+                            <p>시작: ${startDate}</p>
+                            ${joinUrl ? `<p><a href="${joinUrl}" target="_blank">미팅 참가</a></p>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 미팅 생성
+        async function createMeeting() {
+            const subject = document.getElementById('meetingSubject').value.trim();
+            const start = document.getElementById('meetingStart').value;
+            const end = document.getElementById('meetingEnd').value;
+            const container = document.getElementById('meetingCreateResult');
+            
+            if (!subject || !start || !end) {
+                container.innerHTML = '<div class="error">모든 필드를 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">생성 중...</div>';
+            
+            try {
+                const response = await fetch('/api/me/onlineMeetings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subject,
+                        startDateTime: new Date(start).toISOString(),
+                        endDateTime: new Date(end).toISOString()
+                    })
+                });
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const result = await response.json();
+                container.innerHTML = '<div class="result-box"><pre>' + 
+                    JSON.stringify(result, null, 2) + '</pre></div>';
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 일정 조회
+        async function loadEvents() {
+            const container = document.getElementById('eventsList');
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            
+            try {
+                const response = await fetch('/api/me/events');
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const events = await response.json();
+                if (events.length === 0) {
+                    container.innerHTML = '<p>일정이 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = events.map(event => {
+                    const startDate = event.start ? 
+                        new Date(event.start).toLocaleString('ko-KR') : 'N/A';
+                    return `
+                        <div class="team-item">
+                            <h4>${event.subject || '(제목 없음)'}</h4>
+                            <p>시작: ${startDate}</p>
+                            ${event.location ? `<p>장소: ${event.location}</p>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 일정 생성
+        async function createEvent() {
+            const subject = document.getElementById('eventSubject').value.trim();
+            const start = document.getElementById('eventStart').value;
+            const end = document.getElementById('eventEnd').value;
+            const location = document.getElementById('eventLocation').value.trim();
+            const body = document.getElementById('eventBody').value.trim();
+            const container = document.getElementById('eventCreateResult');
+            
+            if (!subject || !start || !end) {
+                container.innerHTML = '<div class="error">제목, 시작, 종료 시간을 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">생성 중...</div>';
+            
+            try {
+                const response = await fetch('/api/me/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subject,
+                        body: body || '',
+                        start: new Date(start).toISOString(),
+                        end: new Date(end).toISOString(),
+                        location: location || ''
+                    })
+                });
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const result = await response.json();
+                container.innerHTML = '<div class="result-box"><pre>' + 
+                    JSON.stringify(result, null, 2) + '</pre></div>';
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 채널 생성
+        async function createChannel() {
+            const teamId = document.getElementById('channelTeamId').value.trim();
+            const name = document.getElementById('channelName').value.trim();
+            const description = document.getElementById('channelDescription').value.trim();
+            const container = document.getElementById('channelCreateResult');
+            
+            if (!teamId || !name) {
+                container.innerHTML = '<div class="error">Team ID와 채널 이름을 입력해주세요</div>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading">생성 중...</div>';
+            
+            try {
+                const response = await fetch(`/api/teams/${teamId}/channels`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        displayName: name,
+                        description: description || ''
+                    })
+                });
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                const result = await response.json();
+                container.innerHTML = '<div class="result-box"><pre>' + 
+                    JSON.stringify(result, null, 2) + '</pre></div>';
             } catch (error) {
                 container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
             }
