@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <div th:fragment="menu" class="menu-container">
+        <div class="menu-list">
+            <a href="/home" class="menu-item" id="menu-home">🏠 홈</a>
+            <a href="/home/profile" class="menu-item" id="menu-profile">👤 프로필</a>
+            <a href="/home/teams" class="menu-item" id="menu-teams">👥 Teams</a>
+            <a href="/home/chats" class="menu-item" id="menu-chats">💬 채팅</a>
+            <a href="/home/calendar" class="menu-item" id="menu-calendar">📅 일정</a>
+            <a href="/home/meetings" class="menu-item" id="menu-meetings">🎥 미팅</a>
+            <a href="/home/admin" class="menu-item" id="menu-admin" th:if="${isAdmin}" style="display: none;">⚙️ 관리자</a>
+        </div>
+    </div>
+    
+    <script th:fragment="menu-script">
+        // 현재 페이지에 따라 메뉴 활성화
+        const currentPath = window.location.pathname;
+        const menuItems = document.querySelectorAll('.menu-item');
+        
+        menuItems.forEach(item => {
+            item.classList.remove('active');
+            if (currentPath === item.getAttribute('href') || 
+                (currentPath === '/home' && item.id === 'menu-home') ||
+                (currentPath === '/home/profile' && item.id === 'menu-profile') ||
+                (currentPath.startsWith('/home/teams') && item.id === 'menu-teams') ||
+                (currentPath.startsWith('/home/chats') && item.id === 'menu-chats') ||
+                (currentPath.startsWith('/home/calendar') && item.id === 'menu-calendar') ||
+                (currentPath.startsWith('/home/meetings') && item.id === 'menu-meetings') ||
+                (currentPath.startsWith('/home/admin') && item.id === 'menu-admin')) {
+                item.classList.add('active');
+            }
+        });
+        
+        // 관리자 메뉴 표시 여부 확인
+        fetch('/api/admin/check')
+            .then(response => response.json())
+            .then(data => {
+                if (data.isAdmin) {
+                    const adminMenu = document.getElementById('menu-admin');
+                    if (adminMenu) {
+                        adminMenu.style.display = 'block';
+                    }
+                }
+            })
+            .catch(error => {
+                console.log('관리자 권한 확인 실패:', error);
+            });
+    </script>
+</body>
+</html>
+
+

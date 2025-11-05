@@ -58,7 +58,7 @@ public class AuthController {
             redirectAttributes.addFlashAttribute("success", 
                 "로그인 성공!");
             
-            return "redirect:/dashboard";
+            return "redirect:/home";
         } catch (Exception e) {
             log.error("토큰 교환 실패", e);
             redirectAttributes.addFlashAttribute("error", 

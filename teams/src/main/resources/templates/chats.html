@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅 - MS Teams API</title>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 MS Teams API 대시보드</h1>
+        <a href="/logout" class="btn-logout">로그아웃</a>
+    </div>
+    
+    <div class="container">
+        <div th:replace="~{fragments/menu :: menu}"></div>
+        
+        <!-- 채팅 목록 섹션 -->
+        <div class="section">
+            <h2>💬 채팅 목록</h2>
+            <button class="btn" onclick="loadChats()">채팅 목록 조회</button>
+            <div id="chatsList"></div>
+        </div>
+        
+        <!-- 채팅 생성 섹션 -->
+        <div class="section">
+            <h2>💬 채팅 생성</h2>
+            <div class="input-group">
+                <select id="chatType" style="padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="oneOnOne">1:1 채팅</option>
+                    <option value="group">그룹 채팅</option>
+                </select>
+                <input type="text" id="chatUserIds" placeholder="사용자 ID (쉼표로 구분, 최소 2명)" style="width: 100%;">
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    예: c08ea1f9-85b0-42ee-8a48-3267ece673d8,371fe5e0-55a5-46f1-8c5c-974ef4b70c32
+                </small>
+                <button class="btn" onclick="createChat()">채팅 생성</button>
+            </div>
+            <div id="chatCreateResult"></div>
+        </div>
+        
+        <!-- 채팅 메시지 섹션 -->
+        <div class="section">
+            <h2>✉️ 채팅 메시지</h2>
+            <div class="input-group">
+                <input type="text" id="chatIdForMessages" placeholder="Chat ID 입력">
+                <button class="btn" onclick="loadChatMessages()">메시지 조회</button>
+                <button class="btn" onclick="loadChatMembers()">멤버 조회</button>
+            </div>
+            <div id="chatMessagesList"></div>
+            <div id="chatMembersList"></div>
+        </div>
+        
+        <!-- 메시지 전송 섹션 -->
+        <div class="section">
+            <h2>📤 메시지 전송</h2>
+            <div class="input-group">
+                <input type="text" id="chatIdForSend" placeholder="Chat ID 입력">
+                <input type="text" id="chatMessageBody" placeholder="메시지 입력">
+                <button class="btn" onclick="sendChatMessage()">메시지 전송</button>
+            </div>
+            <div id="chatSendResult"></div>
+        </div>
+    </div>
+    
+    <script th:replace="~{fragments/menu :: menu-script}"></script>
+    <script th:src="@{/js/chats.js}"></script>
+</body>
+</html>
+

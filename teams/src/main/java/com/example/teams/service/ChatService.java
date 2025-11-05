@@ -162,5 +162,53 @@ public class ChatService {
             return new ArrayList<>(); // 도달하지 않음
         }
     }
+    
+    /**
+     * 채팅 생성
+     */
+    public ChatDto createChat(ChatCreateRequest request) {
+        try {
+            GraphServiceClient graphClient = graphClientService.getGraphClient();
+            
+            // Chat 객체 생성
+            com.microsoft.graph.models.Chat chat = new com.microsoft.graph.models.Chat();
+            chat.setChatType(com.microsoft.graph.models.ChatType.valueOf(
+                request.getChatType() != null ? request.getChatType().toUpperCase() : "ONE_ON_ONE"));
+            
+            // 멤버 목록 생성
+            List<com.microsoft.graph.models.AadUserConversationMember> members = new ArrayList<>();
+            if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+                for (String userId : request.getUserIds()) {
+                    com.microsoft.graph.models.AadUserConversationMember member = 
+                        new com.microsoft.graph.models.AadUserConversationMember();
+                    member.setOdataType("#microsoft.graph.aadUserConversationMember");
+                    member.setRoles(List.of("owner"));
+                    member.setAdditionalData(java.util.Map.of(
+                        "user@odata.bind", 
+                        "https://graph.microsoft.com/v1.0/users('" + userId + "')"
+                    ));
+                    members.add(member);
+                }
+            }
+
+            // 기존 lint 에러 수정: setMembers(List<ConversationMember>) expects List<ConversationMember>
+            List<com.microsoft.graph.models.ConversationMember> conversationMembers = new ArrayList<>(members);
+            chat.setMembers(conversationMembers);
+
+            // 채팅 생성
+            var createdChat = graphClient.chats().post(chat);
+
+            return ChatDto.builder()
+                .id(createdChat.getId())
+                .topic(createdChat.getTopic())
+                .chatType(createdChat.getChatType() != null ? createdChat.getChatType().toString() : "unknown")
+                .createdDateTime(createdChat.getCreatedDateTime())
+                .webUrl(createdChat.getWebUrl())
+                .build();
+        } catch (Exception e) {
+            errorHandler.handle(e, "채팅 생성");
+            return null; // 도달하지 않음
+        }
+    }
 }
 

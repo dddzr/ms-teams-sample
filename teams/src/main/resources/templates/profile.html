@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로필 - MS Teams API</title>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 MS Teams API 대시보드</h1>
+        <a href="/logout" class="btn-logout">로그아웃</a>
+    </div>
+    
+    <div class="container">
+        <div th:replace="~{fragments/menu :: menu}"></div>
+        
+        <!-- 사용자 정보 섹션 -->
+        <div class="section">
+            <h2>👤 내 정보</h2>
+            <button class="btn" onclick="loadUserInfo()">사용자 정보 조회</button>
+            <button class="btn" onclick="showEditForm()">정보 수정</button>
+            <div id="userInfo"></div>
+            <div id="userEditForm" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <script th:replace="~{fragments/menu :: menu-script}"></script>
+    <script>
+        let currentUser = null;
+        
+        // 사용자 정보 조회
+        async function loadUserInfo() {
+            const container = document.getElementById('userInfo');
+            const editForm = document.getElementById('userEditForm');
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            editForm.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/me');
+                if (!response.ok) throw new Error('API 호출 실패');
+                
+                currentUser = await response.json();
+                container.innerHTML = `
+                    <div class="user-info">
+                        <div class="info-item">
+                            <label>이름</label>
+                            <span>${currentUser.displayName || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>이메일</label>
+                            <span>${currentUser.mail || currentUser.userPrincipalName || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>직책</label>
+                            <span>${currentUser.jobTitle || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>부서</label>
+                            <span>${currentUser.department || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>사무실</label>
+                            <span>${currentUser.officeLocation || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>전화</label>
+                            <span>${currentUser.businessPhones && currentUser.businessPhones.length > 0 ? currentUser.businessPhones[0] : 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 수정 폼 표시
+        async function showEditForm() {
+            const container = document.getElementById('userInfo');
+            const editForm = document.getElementById('userEditForm');
+            
+            // 사용자 정보가 없으면 먼저 로드
+            if (!currentUser) {
+                await loadUserInfo();
+            }
+            
+            editForm.innerHTML = `
+                <div class="section" style="margin-top: 20px; background: #f9f9f9;">
+                    <h3>정보 수정</h3>
+                    <div class="input-group">
+                        <label style="width: 150px; display: inline-block;">이름:</label>
+                        <input type="text" id="editDisplayName" value="${currentUser.displayName || ''}" style="flex: 1;">
+                    </div>
+                    <div class="input-group">
+                        <label style="width: 150px; display: inline-block;">직책:</label>
+                        <input type="text" id="editJobTitle" value="${currentUser.jobTitle || ''}" style="flex: 1;">
+                    </div>
+                    <div class="input-group">
+                        <label style="width: 150px; display: inline-block;">부서:</label>
+                        <input type="text" id="editDepartment" value="${currentUser.department || ''}" style="flex: 1;">
+                    </div>
+                    <div class="input-group">
+                        <label style="width: 150px; display: inline-block;">사무실:</label>
+                        <input type="text" id="editOfficeLocation" value="${currentUser.officeLocation || ''}" style="flex: 1;">
+                    </div>
+                    <div class="input-group">
+                        <label style="width: 150px; display: inline-block;">전화:</label>
+                        <input type="text" id="editBusinessPhone" value="${currentUser.businessPhones && currentUser.businessPhones.length > 0 ? currentUser.businessPhones[0] : ''}" style="flex: 1;">
+                    </div>
+                    <div class="input-group">
+                        <button class="btn" onclick="updateUserInfo()">저장</button>
+                        <button class="btn" onclick="cancelEdit()" style="background: #999;">취소</button>
+                    </div>
+                    <div id="updateResult"></div>
+                </div>
+            `;
+            editForm.style.display = 'block';
+        }
+        
+        // 사용자 정보 수정
+        async function updateUserInfo() {
+            const resultContainer = document.getElementById('updateResult');
+            resultContainer.innerHTML = '<div class="loading">저장 중...</div>';
+            
+            try {
+                // 빈 문자열은 null로 변환하여 전송하지 않음
+                const updateData = {};
+                const displayName = document.getElementById('editDisplayName').value.trim();
+                const jobTitle = document.getElementById('editJobTitle').value.trim();
+                const department = document.getElementById('editDepartment').value.trim();
+                const officeLocation = document.getElementById('editOfficeLocation').value.trim();
+                const businessPhone = document.getElementById('editBusinessPhone').value.trim();
+                
+                if (displayName) updateData.displayName = displayName;
+                if (jobTitle) updateData.jobTitle = jobTitle;
+                if (department) updateData.department = department;
+                if (officeLocation) updateData.officeLocation = officeLocation;
+                if (businessPhone) updateData.businessPhone = businessPhone;
+                
+                // 업데이트할 필드가 없으면 경고
+                if (Object.keys(updateData).length === 0) {
+                    resultContainer.innerHTML = '<div class="error">수정할 정보가 없습니다.</div>';
+                    return;
+                }
+                
+                const response = await fetch('/api/me', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+                
+                // 응답 본문 확인
+                const responseText = await response.text();
+                
+                if (!response.ok) {
+                    let errorMessage = 'API 호출 실패';
+                    try {
+                        if (responseText) {
+                            const errorData = JSON.parse(responseText);
+                            errorMessage = errorData.message || errorMessage;
+                        }
+                    } catch (e) {
+                        errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                // 성공 응답 처리
+                let updatedUser = null;
+                if (responseText && responseText.trim()) {
+                    try {
+                        updatedUser = JSON.parse(responseText);
+                        currentUser = updatedUser;
+                    } catch (e) {
+                        console.warn('응답 파싱 실패, 사용자 정보 다시 로드:', e);
+                        // 파싱 실패해도 사용자 정보 다시 로드
+                    }
+                }
+                
+                resultContainer.innerHTML = '<div style="color: green; padding: 10px;">✅ 정보가 성공적으로 수정되었습니다.</div>';
+                
+                // 1초 후 정보 다시 로드
+                setTimeout(() => {
+                    loadUserInfo();
+                    document.getElementById('userEditForm').style.display = 'none';
+                }, 1000);
+                
+            } catch (error) {
+                resultContainer.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
+        }
+        
+        // 수정 취소
+        function cancelEdit() {
+            document.getElementById('userEditForm').style.display = 'none';
+            document.getElementById('updateResult').innerHTML = '';
+        }
+        
+        // 페이지 로드 시 자동으로 사용자 정보 로드
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUserInfo();
+        });
+    </script>
+</body>
+</html>
+

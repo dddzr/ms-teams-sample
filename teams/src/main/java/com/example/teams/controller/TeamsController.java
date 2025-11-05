@@ -32,6 +32,13 @@ public class TeamsController {
         return teamsService.getCurrentUser();
     }
     
+    @PutMapping("/me")
+    @ResponseBody
+    public UserDto updateCurrentUser(@RequestBody UserUpdateRequest request, HttpSession session) {
+        authUtil.checkAuthentication(session);
+        return teamsService.updateCurrentUser(request);
+    }
+    
     // ==================== Teams & Channels ====================
     @GetMapping("/teams")
     @ResponseBody

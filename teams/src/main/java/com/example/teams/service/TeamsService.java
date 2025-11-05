@@ -29,7 +29,13 @@ public class TeamsService {
     public UserDto getCurrentUser() {
         try {
             GraphServiceClient graphClient = graphClientService.getGraphClient();
-            User user = graphClient.me().get();
+            // 필요한 필드만 명시적으로 선택
+            User user = graphClient.me().get(requestConfiguration -> {
+                requestConfiguration.queryParameters.select = new String[]{
+                    "id", "displayName", "mail", "userPrincipalName", 
+                    "jobTitle", "department", "officeLocation", "businessPhones"
+                };
+            });
             
             return UserDto.builder()
                 .id(user.getId())
@@ -37,9 +43,77 @@ public class TeamsService {
                 .mail(user.getMail())
                 .userPrincipalName(user.getUserPrincipalName())
                 .jobTitle(user.getJobTitle())
+                .department(user.getDepartment())
+                .officeLocation(user.getOfficeLocation())
+                .businessPhones(user.getBusinessPhones())
                 .build();
         } catch (Exception e) {
             errorHandler.handle(e, "사용자 정보 조회");
+            return null; // 도달하지 않음
+        }
+    }
+    
+    /**
+     * 현재 사용자 정보 수정
+     */
+    public UserDto updateCurrentUser(UserUpdateRequest request) {
+        try {
+            GraphServiceClient graphClient = graphClientService.getGraphClient();
+            
+            User user = new User();
+            // boolean hasUpdate = false;
+            
+            // if (request.getDisplayName() != null && !request.getDisplayName().trim().isEmpty()) {
+            //     user.setDisplayName(request.getDisplayName().trim());
+            //     hasUpdate = true;
+            // }
+            
+            // if (request.getJobTitle() != null && !request.getJobTitle().trim().isEmpty()) {
+            //     user.setJobTitle(request.getJobTitle().trim());
+            //     log.info("직책 수정: {}", request.getJobTitle().trim());
+            //     hasUpdate = true;
+            // }
+            
+            // if (request.getDepartment() != null && !request.getDepartment().trim().isEmpty()) {
+            //     user.setDepartment(request.getDepartment().trim());
+            //     hasUpdate = true;
+            // }
+            
+            // if (request.getOfficeLocation() != null && !request.getOfficeLocation().trim().isEmpty()) {
+            //     user.setOfficeLocation(request.getOfficeLocation().trim());
+            //     hasUpdate = true;
+            // }
+            
+            // if (request.getBusinessPhone() != null && !request.getBusinessPhone().trim().isEmpty()) {
+            //     user.setBusinessPhones(List.of(request.getBusinessPhone().trim()));
+            //     hasUpdate = true;
+            // }
+            
+            // if (!hasUpdate) {
+            //     return getCurrentUser();
+            // }
+            
+            graphClient.me().patch(user);
+            
+            User updatedUser = graphClient.me().get(requestConfiguration -> {
+                requestConfiguration.queryParameters.select = new String[]{
+                    "id", "displayName", "mail", "userPrincipalName", 
+                    "jobTitle", "department", "officeLocation", "businessPhones"
+                };
+            });
+            
+            return UserDto.builder()
+                .id(updatedUser.getId())
+                .displayName(updatedUser.getDisplayName())
+                .mail(updatedUser.getMail())
+                .userPrincipalName(updatedUser.getUserPrincipalName())
+                .jobTitle(updatedUser.getJobTitle())
+                .department(updatedUser.getDepartment())
+                .officeLocation(updatedUser.getOfficeLocation())
+                .businessPhones(updatedUser.getBusinessPhones())
+                .build();
+        } catch (Exception e) {
+            errorHandler.handle(e, "사용자 정보 수정");
             return null; // 도달하지 않음
         }
     }

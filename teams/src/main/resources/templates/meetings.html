@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미팅 - MS Teams API</title>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+</head>
+<body>
+    <div class="header">
+        <h1>🔷 MS Teams API 대시보드</h1>
+        <a href="/logout" class="btn-logout">로그아웃</a>
+    </div>
+    
+    <div class="container">
+        <div th:replace="~{fragments/menu :: menu}"></div>
+        
+        <!-- 미팅 목록 섹션 -->
+        <div class="section">
+            <h2>🎥 미팅 목록</h2>
+            <button class="btn" onclick="loadMeetings()">미팅 목록 조회</button>
+            <div id="meetingsList"></div>
+        </div>
+        
+        <!-- 미팅 생성 섹션 -->
+        <div class="section">
+            <h2>➕ 미팅 생성</h2>
+            <div class="input-group">
+                <input type="text" id="meetingSubject" placeholder="미팅 제목">
+                <input type="datetime-local" id="meetingStart" placeholder="시작 시간">
+                <input type="datetime-local" id="meetingEnd" placeholder="종료 시간">
+                <button class="btn" onclick="createMeeting()">미팅 생성</button>
+            </div>
+            <div id="meetingCreateResult"></div>
+        </div>
+    </div>
+    
+    <script th:replace="~{fragments/menu :: menu-script}"></script>
+    <script th:src="@{/js/meetings.js}"></script>
+</body>
+</html>
+

@@ -61,10 +61,13 @@ public class GraphClientService {
                 }
             };
             
+            // GraphServiceClient 생성
             graphClient = new GraphServiceClient(tokenCredential);
+            
+            log.info("Graph Client 초기화 완료");
+            
             currentAccessToken = accessToken;
                 
-            log.info("Graph Client 초기화 완료");
         } catch (Exception e) {
             log.error("Graph Client 초기화 실패", e);
             throw new RuntimeException("Graph Client 초기화 실패", e);
@@ -79,5 +82,7 @@ public class GraphClientService {
         currentAccessToken = null;
         log.info("Graph Client 초기화 상태 리셋");
     }
+    
+    
 }
 

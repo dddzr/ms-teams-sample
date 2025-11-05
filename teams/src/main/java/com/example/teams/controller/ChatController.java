@@ -53,5 +53,12 @@ public class ChatController {
         authUtil.checkAuthentication(session);
         return chatService.getChatMembers(chatId);
     }
+    
+    @PostMapping
+    @ResponseBody
+    public ChatDto createChat(@RequestBody ChatCreateRequest request, HttpSession session) {
+        authUtil.checkAuthentication(session);
+        return chatService.createChat(request);
+    }
 }
 
