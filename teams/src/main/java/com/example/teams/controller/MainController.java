@@ -1,5 +1,6 @@
 package com.example.teams.controller;
 
+import com.example.teams.service.AuthService;
 import com.example.teams.service.GraphClientService;
 import com.example.teams.util.AuthUtil;
 import jakarta.servlet.http.HttpSession;
@@ -15,6 +16,14 @@ public class MainController {
     
     private final GraphClientService graphClientService;
     private final AuthUtil authUtil;
+    private final AuthService authService;
+
+    @GetMapping("/")
+    public String index(Model model) {
+        String authUrl = authService.getAuthorizationUrl();
+        model.addAttribute("authUrl", authUrl);
+        return "index";
+    }
     
     @GetMapping("/home")
     public String home(HttpSession session, Model model, 
@@ -35,8 +44,7 @@ public class MainController {
         if (viewName.startsWith("redirect:")) {
             return viewName;
         }
-        // 관리자 여부를 모델에 추가
-        model.addAttribute("isAdmin", authUtil.isAdmin(session));
+        
         return viewName;
     }
     

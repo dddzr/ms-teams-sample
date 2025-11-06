@@ -34,6 +34,12 @@ public class AuthUtil {
         "Application.ReadWrite.All"
     );
     
+    // 관리자 역할 ID 목록 (wids - Well-known IDs)
+    private static final List<String> ADMIN_ROLE_IDS = List.of(
+        "62e90394-69f5-4237-9190-012177145e10", // Company Administrator (Global Administrator)
+        "f2ef992c-3afb-46b9-b7cf-a126ee74c451"  // User Administrator
+    );
+    
     /**
      * 세션에서 Access Token을 확인하고 Graph Client를 초기화합니다.
      * 
@@ -105,46 +111,57 @@ public class AuthUtil {
             JSONObject claims = new JSONObject(payloadJson);
             
             // scope 확인
-            if (claims.has("scp")) {
-                String scope = claims.getString("scp");
-                log.debug("토큰 scope: {}", scope);
+            // if (claims.has("scp")) {
+            //     String scope = claims.getString("scp");
+            //     log.debug("토큰 scope: {}", scope);
                 
-                // 관리자 scope가 포함되어 있는지 확인
-                for (String adminScope : ADMIN_SCOPES) {
-                    if (scope.contains(adminScope)) {
-                        log.info("관리자 권한 확인: {}", adminScope);
-                        return true;
-                    }
-                }
-            }
+            //     // 관리자 scope가 포함되어 있는지 확인
+            //     for (String adminScope : ADMIN_SCOPES) {
+            //         if (scope.contains(adminScope)) {
+            //             log.info("관리자 권한 확인: {}", adminScope);
+            //             return true;
+            //         }
+            //     }
+            // }
             
             // roles 확인 (앱 역할)
-            if (claims.has("roles")) {
-                Object rolesObj = claims.get("roles");
-                if (rolesObj instanceof List) {
-                    @SuppressWarnings("unchecked")
-                    List<String> roles = (List<String>) rolesObj;
-                    log.debug("토큰 roles: {}", roles);
+            // if (claims.has("roles")) {
+            //     Object rolesObj = claims.get("roles");
+            //     if (rolesObj instanceof List) {
+            //         @SuppressWarnings("unchecked")
+            //         List<String> roles = (List<String>) rolesObj;
+            //         log.debug("토큰 roles: {}", roles);
                     
-                    // 관리자 역할이 있는지 확인
-                    for (String role : roles) {
-                        if (role.toLowerCase().contains("admin") || 
-                            role.toLowerCase().contains("administrator")) {
-                            log.info("관리자 역할 확인: {}", role);
+            //         // 관리자 역할이 있는지 확인
+            //         for (String role : roles) {
+            //             if (role.toLowerCase().contains("admin") || 
+            //                 role.toLowerCase().contains("administrator")) {
+            //                 log.info("관리자 역할 확인: {}", role);
+            //                 return true;
+            //             }
+            //         }
+            //     }
+            // }
+            
+            // wids 확인 (Well-known IDs - Azure AD 역할 ID)
+            if (claims.has("wids")) {
+                Object widsObj = claims.get("wids");
+                if (widsObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<String> wids = (List<String>) widsObj;
+                    log.debug("토큰 wids: {}", wids);
+                    
+                    // 관리자 역할 ID가 포함되어 있는지 확인
+                    for (String wid : wids) {
+                        if (ADMIN_ROLE_IDS.contains(wid)) {
+                            log.info("관리자 역할 ID 확인: {}", wid);
                             return true;
                         }
                     }
                 }
             }
             
-            // wids 확인 (그룹 ID 기반 역할)
-            if (claims.has("wids")) {
-                log.debug("wids (그룹 ID) 확인됨");
-                // wids가 있으면 관리자 그룹일 수 있음
-                // 실제로는 Azure AD에서 관리자 그룹 ID를 확인해야 함
-            }
-            
-            log.debug("관리자 권한이 확인되지 않았습니다");
+            // log.debug("관리자 권한이 확인되지 않았습니다");
             return false;
             
         } catch (Exception e) {

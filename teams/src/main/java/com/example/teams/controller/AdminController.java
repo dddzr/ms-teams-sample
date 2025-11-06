@@ -57,7 +57,7 @@ public class AdminController {
                     if (claims.has("scp")) {
                         result.put("scopes", claims.getString("scp"));
                     }
-                    if (claims.has("roles")) {
+                    if (claims.has("roles")) { // MS Token에는 이거 없다!! 대신 wids로 scope 허용 권한 있지만 실제로는 내부 DB에서 관리하는 역할 조회해야한다.
                         result.put("roles", claims.get("roles"));
                     }
                 }
