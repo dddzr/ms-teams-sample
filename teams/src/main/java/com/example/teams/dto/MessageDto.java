@@ -12,8 +12,10 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class MessageDto {
     private String id;
+    private String subject;
     private String body;
-    private String from;
+    private String userName;
+    private String webUrl;
     private OffsetDateTime createdDateTime;
     private String messageType;
 }

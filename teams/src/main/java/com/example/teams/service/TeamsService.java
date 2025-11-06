@@ -194,14 +194,21 @@ public class TeamsService {
             List<MessageDto> messageList = new ArrayList<>();
             if (messages != null && messages.getValue() != null) {
                 messages.getValue().forEach(message -> {
-                    String from = message.getFrom() != null && message.getFrom().getUser() != null ? 
+                    if(message.getFrom() == null) {
+                        return;
+                    }
+                    String userName = message.getFrom().getUser() != null ? 
                         message.getFrom().getUser().getDisplayName() : "Unknown";
                     String body = message.getBody() != null ? message.getBody().getContent() : "";
+                    String subject = message.getSubject();
+                    String webUrl = message.getWebUrl();
                     
                     messageList.add(MessageDto.builder()
                         .id(message.getId())
+                        .subject(subject)
                         .body(body)
-                        .from(from)
+                        .userName(userName)
+                        .webUrl(webUrl)
                         .createdDateTime(message.getCreatedDateTime())
                         .messageType(message.getMessageType() != null ? 
                             message.getMessageType().toString() : "message")

@@ -144,9 +144,10 @@ async function loadMessages() {
             html += `
                 <div class="message-item">
                     <h4>${message.subject || '제목 없음'}</h4>
-                    <p><strong>발신자:</strong> ${message.from || 'N/A'}</p>
+                    <p><strong>발신자:</strong> ${message.userName || 'N/A'}</p>
                     <p><strong>시간:</strong> ${message.createdDateTime || 'N/A'}</p>
-                    <p><strong>내용:</strong> ${message.bodyPreview || message.body || 'N/A'}</p>
+                    <p><strong>내용:</strong> ${message.body || 'N/A'}</p>
+                    <a href="${message.webUrl}" target="_blank">링크</a>
                 </div>
             `;
         });
