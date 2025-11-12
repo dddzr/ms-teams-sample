@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MS Teams API 테스트</title>
+    <title>인증 시나리오 테스트</title>
     <style>
         * {
             margin: 0;
@@ -15,85 +15,149 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }
         
         .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .scenarios {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .scenario-card {
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 60px;
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
+            padding: 40px;
         }
         
-        .logo {
-            font-size: 48px;
+        .scenario-header {
+            display: flex;
+            align-items: center;
             margin-bottom: 20px;
         }
         
-        h1 {
+        .scenario-icon {
+            font-size: 48px;
+            margin-right: 20px;
+        }
+        
+        .scenario-title {
+            flex: 1;
+        }
+        
+        .scenario-title h2 {
             color: #333;
-            margin-bottom: 10px;
-            font-size: 32px;
+            font-size: 24px;
+            margin-bottom: 5px;
         }
         
-        p {
+        .scenario-title .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .badge-ms {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .badge-oauth {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .badge-saml {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        
+        .scenario-description {
             color: #666;
-            margin-bottom: 40px;
-            font-size: 16px;
+            font-size: 14px;
             line-height: 1.6;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
         }
         
-        .btn-login {
+        .scenario-description strong {
+            color: #333;
+        }
+        
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 16px 40px;
-            font-size: 18px;
+            padding: 16px 32px;
+            font-size: 16px;
             font-weight: 600;
             border-radius: 50px;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
+            text-align: center;
             transition: transform 0.3s, box-shadow 0.3s;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .btn-login:hover {
+        .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
         }
         
-        .btn-login:active {
-            transform: translateY(0);
-        }
-        .login-inline {
-            margin-top: 16px;
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 10px;
-            align-items: center;
-        }
-        .login-input {
-            padding: 12px 14px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            font-size: 14px;
-        }
         .btn-secondary {
             background: #eef1ff;
             color: #4b57cc;
             border: 1px solid #dfe4ff;
-            padding: 12px 16px;
+            padding: 12px 24px;
             font-size: 14px;
             border-radius: 10px;
             cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: background 0.3s;
         }
+        
+        .btn-secondary:hover {
+            background: #dfe4ff;
+        }
+        
         .btn-link {
             background: transparent;
             color: #4b57cc;
@@ -102,6 +166,26 @@
             font-size: 14px;
             text-decoration: underline;
             cursor: pointer;
+            display: inline-block;
+        }
+        
+        .btn-link:hover {
+            color: #667eea;
+        }
+        
+        .btn-link-group {
+            text-align: center;
+            margin-top: 8px;
+        }
+        
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #856404;
         }
         
         .alert {
@@ -123,81 +207,168 @@
             border: 1px solid #cfc;
         }
         
-        .features {
-            text-align: left;
-            margin-top: 40px;
-            padding-top: 40px;
-            border-top: 1px solid #eee;
-        }
-        
-        .features h3 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-        
-        .features ul {
-            list-style: none;
+        .metadata-link {
+            margin-top: 10px;
+            font-size: 12px;
             color: #666;
         }
         
-        .features li {
-            padding: 10px 0;
-            padding-left: 30px;
-            position: relative;
+        .metadata-link a {
+            color: #667eea;
+            text-decoration: none;
         }
         
-        .features li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: #667eea;
-            font-weight: bold;
-            font-size: 18px;
+        .metadata-link a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">🔷</div>
-        <h1>MS Teams API 테스트</h1>
-        <p>Microsoft Teams API를 테스트하고 학습하는 프로젝트입니다.</p>
+        <div class="header">
+            <h1>🔐 인증 시나리오 테스트</h1>
+            <p>세 가지 인증 방식을 테스트할 수 있습니다</p>
+        </div>
         
         <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
         <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
         
-        <a th:href="${authUrl}" class="btn-login">
-            Microsoft 계정으로 로그인
-        </a>
-        
-        <div class="login-inline">
-            <input id="loginHint" class="login-input" type="email" placeholder="계정 이메일 입력 (예: user@contoso.com)">
-            <button class="btn-secondary" onclick="loginWithHint()">해당 계정으로 로그인</button>
+        <div class="scenarios">
+            <!-- 시나리오 1: MS 단독 로그인 (기존) -->
+            <div class="scenario-card">
+                <div class="scenario-header">
+                    <div class="scenario-icon">🟢</div>
+                    <div class="scenario-title">
+                        <h2>MS 단독 로그인</h2>
+                        <span class="badge badge-ms">기존 기능 (DB 없이도 동작)</span>
+                    </div>
+                </div>
+                
+                <div class="scenario-description">
+                    <strong>시나리오 설명:</strong><br>
+                    Microsoft Entra ID가 사용자 인증을 담당하고, 우리 앱은 Relying Party (RP)로 동작합니다.
+                    DB 연결 없이도 MS 로그인만으로 동작하며, Azure에 등록된 엔드포인트를 사용합니다.
+                </div>
+                
+                <div class="btn-group">
+                    <a th:href="${msAuthUrl}" class="btn-primary">
+                        Microsoft 계정으로 로그인
+                    </a>
+                    <div class="btn-link-group">
+                        <a th:href="@{/auth/microsoft/login/select-account}" class="btn-link">계정 선택 창 열기</a>
+                        ·
+                        <a th:href="@{/auth/microsoft/login/force}" class="btn-link">로그인 창 열기</a>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <strong>특징:</strong><br>
+                    - Azure에 등록된 엔드포인트 사용 (/auth/microsoft/callback)<br>
+                    - DB 연결 없이도 동작 가능<br>
+                    - Access Token을 세션에 저장하여 Graph API 사용
+                </div>
+            </div>
+            
+            <!-- 시나리오 2: OAuth 2.0 (MS가 IdP) - 내 앱 로그인 연동 -->
+            <div class="scenario-card">
+                <div class="scenario-header">
+                    <div class="scenario-icon">🔵</div>
+                    <div class="scenario-title">
+                        <h2>OAuth 2.0</h2>
+                        <span class="badge badge-oauth">MS가 IdP → 내 앱 로그인 연동</span>
+                    </div>
+                </div>
+                
+                <div class="scenario-description">
+                    <strong>시나리오 설명:</strong><br>
+                    Microsoft Entra ID가 사용자 인증을 담당하고, 우리 앱은 Relying Party (RP)로 동작합니다.
+                    사용자가 Microsoft 계정으로 로그인하면 우리 앱이 인증 정보를 받아 내 앱 계정과 연동합니다.
+                </div>
+                
+                <div class="btn-group">
+                    <a th:href="${oauthUrl}" class="btn-primary">
+                        Microsoft 계정으로 로그인 (연동)
+                    </a>
+                    <div class="btn-link-group">
+                        <a th:href="@{/auth/oauth/login/select-account}" class="btn-link">계정 선택 창 열기</a>
+                        ·
+                        <a th:href="@{/auth/oauth/login/force}" class="btn-link">로그인 창 열기</a>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <strong>테스트 방법:</strong><br>
+                    1. "Microsoft 계정으로 로그인 (연동)" 버튼 클릭<br>
+                    2. Microsoft 로그인 페이지에서 인증<br>
+                    3. 콜백으로 돌아와서 인증 정보 확인 및 내 앱 계정과 연동
+                </div>
+            </div>
+            
+            <!-- 시나리오 3: SAML 2.0 (우리 포털이 IdP) -->
+            <div class="scenario-card">
+                <div class="scenario-header">
+                    <div class="scenario-icon">🟣</div>
+                    <div class="scenario-title">
+                        <h2>SAML 2.0</h2>
+                        <span class="badge badge-saml">우리 포털이 IdP → MS 로그인 연동</span>
+                    </div>
+                </div>
+                
+                <div class="scenario-description">
+                    <strong>시나리오 설명:</strong><br>
+                    우리 포털이 사용자 인증을 담당하고, Microsoft Entra ID는 Relying Party (RP)로 동작합니다.
+                    사용자가 우리 포털에서 로그인하면 Microsoft Entra ID가 우리 포털의 인증 정보를 받습니다.
+                </div>
+                
+                <div class="btn-group">
+                    <a th:href="@{/auth/saml/metadata}" class="btn-primary" target="_blank">
+                        IdP 메타데이터 보기
+                    </a>
+                    <a th:href="@{/auth/saml/sso?SAMLRequest=demo}" class="btn-secondary">
+                        SAML SSO 테스트 (데모)
+                    </a>
+                </div>
+                
+                <div class="metadata-link">
+                    <strong>메타데이터 URL:</strong><br>
+                    <a th:href="${samlMetadataUrl}" target="_blank" th:text="${samlMetadataUrl}"></a>
+                </div>
+                
+                <div class="info-box">
+                    <strong>테스트 방법:</strong><br>
+                    1. Microsoft Entra ID에 우리 포털을 IdP로 등록<br>
+                    2. 메타데이터 URL을 Microsoft Entra ID에 제공<br>
+                    3. Microsoft Entra ID에서 SSO 시작 시 우리 포털로 리다이렉트<br>
+                    4. 우리 포털에서 로그인 후 SAML Response 전송
+                </div>
+            </div>
         </div>
-        <div style="margin-top:8px;">
-            <button class="btn-link" onclick="selectAccount()">계정 선택 창 열기</button>
-            ·
-            <button class="btn-link" onclick="forceLogin()">로그인 창 강제 표시</button>
-        </div>
         
-        <script>
-            function loginWithHint() {
-                var v = document.getElementById('loginHint').value.trim();
-                if (!v) {
-                    alert('계정 이메일을 입력하세요.');
-                    return;
-                }
-                const url = '/login/with-hint?login_hint=' + encodeURIComponent(v);
-                window.location.href = url;
-            }
-            function selectAccount() {
-                window.location.href = '/login/select-account';
-            }
-            function forceLogin() {
-                window.location.href = '/login/force';
-            }
-        </script>
+        <!-- 앱 자체 로그인 (기존 기능) -->
+        <div class="scenario-card" style="max-width: 500px; margin: 0 auto;">
+            <div class="scenario-header">
+                <div class="scenario-icon">⚙️</div>
+                <div class="scenario-title">
+                    <h2>앱 자체 로그인</h2>
+                </div>
+            </div>
+            
+            <div class="scenario-description">
+                <strong>설명:</strong><br>
+                우리 앱의 자체 인증 시스템을 사용합니다.
+                OAuth나 SAML과는 별개의 독립적인 로그인 시스템입니다.
+            </div>
+            
+            <div class="btn-group">
+                <a th:href="@{/auth/app/login}" class="btn-primary">
+                    앱 로그인
+                </a>
+                <a th:href="@{/auth/app/register}" class="btn-secondary">
+                    회원가입
+                </a>
+            </div>
+        </div>
     </div>
+    
 </body>
 </html>
-

@@ -1,8 +1,10 @@
 package com.example.teams.controller;
 
-import com.example.teams.service.AuthService;
-import com.example.teams.service.GraphClientService;
-import com.example.teams.util.AuthUtil;
+import com.example.teams.auth.service.OAuthService;
+import com.example.teams.auth.service.AuthService;
+import com.example.teams.shared.port.GraphClientPort;
+import com.example.teams.shared.util.AuthUtil;
+
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -14,14 +16,33 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 public class MainController {
     
-    private final GraphClientService graphClientService;
+    private final GraphClientPort graphClientPort;
     private final AuthUtil authUtil;
-    private final AuthService authService;
+    private final AuthService authService;  // 기존 MS 단독 로그인용
+    private final OAuthService oauthService;  // OAuth 2.0 (MS가 IdP) 연동용
 
+    /**
+     * 메인 페이지
+     * 세 가지 인증 시나리오를 테스트할 수 있는 페이지
+     * 
+     * 시나리오 1: MS 단독 로그인 (기존) - DB 없이도 동작, Azure 등록 엔드포인트 사용
+     * 시나리오 2: OAuth 2.0 (MS가 IdP) - 내 앱 로그인 연동
+     * 시나리오 3: SAML 2.0 (우리 포털이 IdP) - MS 로그인 연동
+     */
     @GetMapping("/")
     public String index(Model model) {
-        String authUrl = authService.getAuthorizationUrl();
-        model.addAttribute("authUrl", authUrl);
+        // 시나리오 1: MS 단독 로그인 (기존) - Azure 등록 엔드포인트 사용
+        String msAuthUrl = authService.getAuthorizationUrl();
+        model.addAttribute("msAuthUrl", msAuthUrl);
+        
+        // 시나리오 2: OAuth 2.0 (MS가 IdP) - Authorization URL
+        String oauthUrl = oauthService.getAuthorizationUrl();
+        model.addAttribute("oauthUrl", oauthUrl);
+        
+        // 시나리오 3: SAML 2.0 (우리 포털이 IdP) - 메타데이터 URL
+        String samlMetadataUrl = "/auth/saml/metadata";
+        model.addAttribute("samlMetadataUrl", samlMetadataUrl);
+        
         return "index";
     }
     
@@ -84,7 +105,7 @@ public class MainController {
         }
         
         try {
-            graphClientService.initializeGraphClient(accessToken);
+            graphClientPort.initializeGraphClient(accessToken);
             model.addAttribute("isAdmin", true);
             return "admin";
         } catch (Exception e) {
@@ -96,24 +117,29 @@ public class MainController {
     private String checkAuthAndReturnView(HttpSession session, 
                                          RedirectAttributes redirectAttributes, 
                                          String viewName) {
+        Long userId = (Long) session.getAttribute("userId");
         String accessToken = (String) session.getAttribute("accessToken");
         
-        if (accessToken == null) {
+        // 인증 확인: userId 또는 accessToken 중 하나라도 있으면 인증된 것으로 간주
+        if (userId == null && accessToken == null) {
             redirectAttributes.addFlashAttribute("error", 
                 "먼저 로그인해주세요");
             return "redirect:/";
         }
         
-        try {
-            // Graph Client 초기화
-            graphClientService.initializeGraphClient(accessToken);
-            
-            return viewName;
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", 
-                "페이지 로드 실패: " + e.getMessage());
-            return "redirect:/";
+        // accessToken이 있으면 Graph Client 초기화 (MS 로그인 또는 OAuth 연동)
+        if (accessToken != null) {
+            try {
+                graphClientPort.initializeGraphClient(accessToken);
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("error", 
+                    "페이지 로드 실패: " + e.getMessage());
+                return "redirect:/";
+            }
         }
+        // 앱 로그인만 한 경우 (accessToken 없음)는 Graph Client 초기화 불필요
+        
+        return viewName;
     }
 }
 

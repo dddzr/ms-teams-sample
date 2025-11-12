@@ -109,27 +109,93 @@ mvnw.cmd spring-boot:run
 
 ```
 src/main/java/com/example/teams/
-├── config/
-│   └── AzureAdConfig.java           # Azure AD 설정
-├── controller/
-│   ├── HomeController.java          # 메인 페이지
-│   ├── AuthController.java          # OAuth 인증 처리
-│   ├── DashboardController.java     # 대시보드
-│   └── TeamsController.java         # Teams API 엔드포인트
-├── dto/
-│   ├── TeamDto.java                 # Team 데이터 모델
-│   ├── ChannelDto.java              # Channel 데이터 모델
-│   ├── UserDto.java                 # User 데이터 모델
-│   └── MessageDto.java              # Message 데이터 모델
-├── service/
-│   ├── AuthService.java             # 인증 서비스
-│   └── TeamsService.java            # Teams API 서비스
-└── TeamsApplication.java            # 메인 애플리케이션
+├── auth/                            # 인증 관련
+│   ├── config/                      # 인증 설정
+│   │   ├── AzureAdConfig.java       # Azure AD 설정
+│   │   ├── OAuthConfig.java         # OAuth 2.0 설정
+│   │   ├── SamlConfig.java          # SAML 2.0 설정
+│   │   └── SamlInitializer.java     # SAML 초기화
+│   ├── controller/                  # 인증 컨트롤러
+│   │   ├── AppLoginController.java  # 앱 자체 로그인
+│   │   ├── OAuthController.java     # OAuth 2.0 인증
+│   │   ├── SamlController.java     # SAML 2.0 인증
+│   │   ├── MicrosoftLoginController.java  # Microsoft 단독 로그인
+│   │   └── CommonAuthController.java # 공통 인증
+│   └── service/                     # 인증 서비스
+│       ├── AuthService.java         # 인증 서비스
+│       ├── OAuthService.java        # OAuth 서비스
+│       └── SamlService.java         # SAML 서비스
+├── controller/                      # 메인 컨트롤러
+│   └── MainController.java          # 메인 페이지
+├── ms/                              # Microsoft Graph API 관련
+│   ├── controller/                  # MS API 컨트롤러
+│   │   ├── TeamsController.java     # Teams API
+│   │   ├── ChatController.java      # Chat API
+│   │   ├── CalendarController.java  # Calendar API
+│   │   ├── MeetingController.java   # Meeting API
+│   │   └── AdminController.java     # Admin API
+│   ├── service/                     # MS API 서비스
+│   │   ├── TeamsService.java        # Teams 서비스
+│   │   ├── ChatService.java         # Chat 서비스
+│   │   ├── CalendarService.java     # Calendar 서비스
+│   │   ├── MeetingService.java     # Meeting 서비스
+│   │   └── GraphClientService.java  # Graph Client 서비스
+│   ├── dto/                         # MS API DTO
+│   │   ├── TeamDto.java             # Team 데이터 모델
+│   │   ├── ChannelDto.java          # Channel 데이터 모델
+│   │   ├── ChatDto.java             # Chat 데이터 모델
+│   │   ├── MessageDto.java          # Message 데이터 모델
+│   │   ├── EventDto.java            # Event 데이터 모델
+│   │   ├── MeetingDto.java          # Meeting 데이터 모델
+│   │   └── UserDto.java             # User 데이터 모델
+│   ├── exception/                   # MS API 예외
+│   │   └── GraphApiException.java   # Graph API 예외
+│   └── util/                        # MS API 유틸리티
+│       └── GraphApiErrorHandler.java # Graph API 에러 핸들러
+├── user/                            # 사용자 관리
+│   ├── controller/                  # 사용자 컨트롤러
+│   │   └── UserController.java      # 사용자 관리
+│   ├── service/                     # 사용자 서비스
+│   │   └── UserService.java         # 사용자 서비스
+│   ├── repository/                  # 사용자 리포지토리
+│   │   └── UserRepository.java      # 사용자 리포지토리
+│   ├── entity/                      # 사용자 엔티티
+│   │   └── User.java                # 사용자 엔티티
+│   └── dto/                         # 사용자 DTO
+│       ├── LoginRequest.java         # 로그인 요청
+│       └── RegisterRequest.java     # 회원가입 요청
+├── shared/                          # 공유 유틸리티
+│   ├── exception/                   # 공통 예외
+│   │   ├── GlobalExceptionHandler.java  # 전역 예외 핸들러
+│   │   ├── UnauthorizedException.java   # 인증 예외
+│   │   └── ForbiddenException.java      # 권한 예외
+│   ├── port/                        # 포트 인터페이스
+│   │   └── GraphClientPort.java     # Graph Client 포트
+│   └── util/                        # 공통 유틸리티
+│       ├── AuthUtil.java             # 인증 유틸리티
+│       ├── ApiResponse.java         # API 응답 유틸리티
+│       └── CertificateGenerator.java # 인증서 생성기
+├── TeamsApplication.java            # 메인 애플리케이션
+└── ServletInitializer.java          # 서블릿 초기화
 
 src/main/resources/
-├── templates/
+├── templates/                       # Thymeleaf 템플릿
 │   ├── index.html                   # 로그인 페이지
-│   └── dashboard.html               # 대시보드 페이지
+│   ├── home.html                    # 홈 페이지
+│   ├── teams.html                   # Teams 페이지
+│   ├── chats.html                   # Chats 페이지
+│   ├── calendar.html                # Calendar 페이지
+│   ├── meetings.html                # Meetings 페이지
+│   ├── profile.html                 # Profile 페이지
+│   ├── admin.html                   # Admin 페이지
+│   ├── auth/                        # 인증 관련 템플릿
+│   │   ├── app/                     # 앱 로그인 템플릿
+│   │   └── saml/                    # SAML 로그인 템플릿
+│   └── fragments/                   # 공통 프래그먼트
+├── saml/                            # SAML 인증서
+│   ├── certificate.pem              # 인증서
+│   └── private-key.pem              # 개인키
+├── static/                          # 정적 리소스
 └── application.properties           # 설정 파일
 ```
 

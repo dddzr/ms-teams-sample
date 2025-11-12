@@ -7,10 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/common.css}">
 </head>
 <body>
-    <div class="header">
-        <h1>🔷 MS Teams API 대시보드</h1>
-        <a href="/logout" class="btn-logout">로그아웃</a>
-    </div>
+    <div th:replace="~{fragments/menu :: header}"></div>
     
     <div class="container">
         <div th:replace="~{fragments/menu :: menu}"></div>
@@ -19,54 +16,68 @@
         <div class="section">
             <h2>👤 내 정보</h2>
             <button class="btn" onclick="loadUserInfo()">사용자 정보 조회</button>
+            <button class="btn" onclick="loadAppUserInfo()">앱(DB) 정보 조회</button>
             <button class="btn" onclick="showEditForm()">정보 수정</button>
             <div id="userInfo"></div>
+            <div id="appUserInfo"></div>
             <div id="userEditForm" style="display: none;"></div>
         </div>
     </div>
     
     <script th:replace="~{fragments/menu :: menu-script}"></script>
     <script>
-        let currentUser = null;
+        let msCurrentUser = null;
         
         // 사용자 정보 조회
         async function loadUserInfo() {
             const container = document.getElementById('userInfo');
+            const appUserInfoContainer = document.getElementById('appUserInfo');
             const editForm = document.getElementById('userEditForm');
             container.innerHTML = '<div class="loading">로딩 중...</div>';
+            appUserInfoContainer.innerHTML = '';
             editForm.style.display = 'none';
             
             try {
                 const response = await fetch('/api/me');
                 if (!response.ok) throw new Error('API 호출 실패');
                 
-                currentUser = await response.json();
+                msCurrentUser = await response.json();
                 container.innerHTML = `
                     <div class="user-info">
                         <div class="info-item">
+                            <label>ID</label>
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <span id="userIdDisplay" style="display: none; font-family: monospace; word-break: break-all;">${msCurrentUser.id || 'N/A'}</span>
+                                <span id="userIdHidden" style="color: #999;">••••••••</span>
+                                <button class="btn" onclick="toggleUserId()" style="padding: 5px 10px; font-size: 12px;" id="userIdToggle">보기</button>
+                                <button class="btn" onclick="copyUserId()" style="padding: 5px 10px; font-size: 12px; display: none; background: #28a745;" id="userIdCopy">복사</button>
+                            </div>
+                        </div>
+                        <div class="info-item">
                             <label>이름</label>
-                            <span>${currentUser.displayName || 'N/A'}</span>
+                            <span>${msCurrentUser.displayName || 'N/A'}</span>
                         </div>
                         <div class="info-item">
                             <label>이메일</label>
-                            <span>${currentUser.mail || currentUser.userPrincipalName || 'N/A'}</span>
+                            <span>${msCurrentUser.mail || msCurrentUser.userPrincipalName || 'N/A'}</span>
                         </div>
                         <div class="info-item">
                             <label>직책</label>
-                            <span>${currentUser.jobTitle || 'N/A'}</span>
+                            <span>${msCurrentUser.jobTitle || 'N/A'}</span>
                         </div>
                         <div class="info-item">
                             <label>부서</label>
-                            <span>${currentUser.department || 'N/A'}</span>
+                            <span>${msCurrentUser.department || 'N/A'}</span>
                         </div>
                         <div class="info-item">
                             <label>사무실</label>
-                            <span>${currentUser.officeLocation || 'N/A'}</span>
+                            <span>${msCurrentUser.officeLocation || 'N/A'}</span>
                         </div>
                         <div class="info-item">
                             <label>전화</label>
-                            <span>${currentUser.businessPhones && currentUser.businessPhones.length > 0 ? currentUser.businessPhones[0] : 'N/A'}</span>
+                            <span>${msCurrentUser.businessPhones && msCurrentUser.businessPhones.length > 0 ? msCurrentUser.businessPhones[0] : 'N/A'}</span>
                         </div>
+                        
                     </div>
                 `;
             } catch (error) {
@@ -77,35 +88,34 @@
         // 수정 폼 표시
         async function showEditForm() {
             const container = document.getElementById('userInfo');
+            const appUserInfoContainer = document.getElementById('appUserInfo');
             const editForm = document.getElementById('userEditForm');
             
-            // 사용자 정보가 없으면 먼저 로드
-            if (!currentUser) {
-                await loadUserInfo();
-            }
+            // 앱 사용자 정보 숨기기
+            appUserInfoContainer.innerHTML = '';
             
             editForm.innerHTML = `
                 <div class="section" style="margin-top: 20px; background: #f9f9f9;">
                     <h3>정보 수정</h3>
                     <div class="input-group">
                         <label style="width: 150px; display: inline-block;">이름:</label>
-                        <input type="text" id="editDisplayName" value="${currentUser.displayName || ''}" style="flex: 1;">
+                        <input type="text" id="editDisplayName" value="${msCurrentUser.displayName || ''}" style="flex: 1;">
                     </div>
                     <div class="input-group">
                         <label style="width: 150px; display: inline-block;">직책:</label>
-                        <input type="text" id="editJobTitle" value="${currentUser.jobTitle || ''}" style="flex: 1;">
+                        <input type="text" id="editJobTitle" value="${msCurrentUser.jobTitle || ''}" style="flex: 1;">
                     </div>
                     <div class="input-group">
                         <label style="width: 150px; display: inline-block;">부서:</label>
-                        <input type="text" id="editDepartment" value="${currentUser.department || ''}" style="flex: 1;">
+                        <input type="text" id="editDepartment" value="${msCurrentUser.department || ''}" style="flex: 1;">
                     </div>
                     <div class="input-group">
                         <label style="width: 150px; display: inline-block;">사무실:</label>
-                        <input type="text" id="editOfficeLocation" value="${currentUser.officeLocation || ''}" style="flex: 1;">
+                        <input type="text" id="editOfficeLocation" value="${msCurrentUser.officeLocation || ''}" style="flex: 1;">
                     </div>
                     <div class="input-group">
                         <label style="width: 150px; display: inline-block;">전화:</label>
-                        <input type="text" id="editBusinessPhone" value="${currentUser.businessPhones && currentUser.businessPhones.length > 0 ? currentUser.businessPhones[0] : ''}" style="flex: 1;">
+                        <input type="text" id="editBusinessPhone" value="${msCurrentUser.businessPhones && msCurrentUser.businessPhones.length > 0 ? msCurrentUser.businessPhones[0] : ''}" style="flex: 1;">
                     </div>
                     <div class="input-group">
                         <button class="btn" onclick="updateUserInfo()">저장</button>
@@ -170,7 +180,7 @@
                 if (responseText && responseText.trim()) {
                     try {
                         updatedUser = JSON.parse(responseText);
-                        currentUser = updatedUser;
+                        msCurrentUser = updatedUser;
                     } catch (e) {
                         console.warn('응답 파싱 실패, 사용자 정보 다시 로드:', e);
                         // 파싱 실패해도 사용자 정보 다시 로드
@@ -194,6 +204,139 @@
         function cancelEdit() {
             document.getElementById('userEditForm').style.display = 'none';
             document.getElementById('updateResult').innerHTML = '';
+        }
+        
+        // ID 보기/숨기기 토글
+        function toggleUserId() {
+            const display = document.getElementById('userIdDisplay');
+            const hidden = document.getElementById('userIdHidden');
+            const toggle = document.getElementById('userIdToggle');
+            const copyBtn = document.getElementById('userIdCopy');
+            
+            if (display.style.display === 'none') {
+                display.style.display = 'inline';
+                hidden.style.display = 'none';
+                toggle.textContent = '숨기기';
+                copyBtn.style.display = 'inline-block';
+            } else {
+                display.style.display = 'none';
+                hidden.style.display = 'inline';
+                toggle.textContent = '보기';
+                copyBtn.style.display = 'none';
+            }
+        }
+        
+        // ID 복사
+        async function copyUserId() {
+            const userId = msCurrentUser?.id;
+            if (!userId) {
+                alert('복사할 ID가 없습니다.');
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(userId);
+                const copyBtn = document.getElementById('userIdCopy');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '복사됨!';
+                copyBtn.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = '#28a745';
+                }, 2000);
+            } catch (err) {
+                // 클립보드 API가 지원되지 않는 경우 대체 방법
+                const textArea = document.createElement('textarea');
+                textArea.value = userId;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    const copyBtn = document.getElementById('userIdCopy');
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '복사됨!';
+                    copyBtn.style.background = '#28a745';
+                    
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.background = '#28a745';
+                    }, 2000);
+                } catch (e) {
+                    alert('복사에 실패했습니다. 수동으로 복사해주세요.');
+                } finally {
+                    document.body.removeChild(textArea);
+                }
+            }
+        }
+        
+        // 앱(DB) 사용자 정보 조회
+        async function loadAppUserInfo() {
+            const container = document.getElementById('appUserInfo');
+            const userInfoContainer = document.getElementById('userInfo');
+            const editForm = document.getElementById('userEditForm');
+            container.innerHTML = '<div class="loading">로딩 중...</div>';
+            userInfoContainer.innerHTML = '';
+            editForm.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/app/me');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'API 호출 실패');
+                }
+                
+                const appCurrentUser = await response.json();
+                container.innerHTML = `
+                    <div class="user-info" style="margin-top: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                        <div class="info-item">
+                            <label>사용자 ID</label>
+                            <span style="font-family: monospace;">${appCurrentUser.id || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>이메일</label>
+                            <span>${appCurrentUser.email || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>이름</label>
+                            <span>${appCurrentUser.name || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>로그인 타입</label>
+                            <span>${appCurrentUser.loginType || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Microsoft ID</label>
+                            <span style="font-family: monospace; word-break: break-all;">${appCurrentUser.microsoftId || '연동 안 됨'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Microsoft Principal Name</label>
+                            <span>${appCurrentUser.userPrincipalName || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>OAuth 연동 여부</label>
+                            <span>${appCurrentUser.oauthLinked ? '✅ 연동됨' : '❌ 미연동'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>계정 생성일</label>
+                            <span>${appCurrentUser.createdAt || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>마지막 로그인</label>
+                            <span>${appCurrentUser.lastLoginAt || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>OAuth 연동일</label>
+                            <span>${appCurrentUser.oauthLinkedAt || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `<div class="error">오류: ${error.message}</div>`;
+            }
         }
         
         // 페이지 로드 시 자동으로 사용자 정보 로드

@@ -7,10 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/common.css}">
 </head>
 <body>
-    <div class="header">
-        <h1>🔷 MS Teams API 대시보드</h1>
-        <a href="/logout" class="btn-logout">로그아웃</a>
-    </div>
+    <div th:replace="~{fragments/menu :: header}"></div>
     
     <div class="container">
         <div th:replace="~{fragments/menu :: menu}"></div>

@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
+    <div th:fragment="header" class="header">
+        <h1>🔷 MS Teams API 대시보드</h1>
+        <a href="/auth/logout" class="btn-logout">로그아웃</a>
+    </div>
+    
     <div th:fragment="menu" class="menu-container">
         <div class="menu-list">
             <a href="/home" class="menu-item" id="menu-home">🏠 홈</a>
