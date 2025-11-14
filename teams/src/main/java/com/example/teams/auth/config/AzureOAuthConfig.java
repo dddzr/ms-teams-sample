@@ -9,27 +9,17 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
-/**
- * OAuth 2.0 설정
- * 
- * 시나리오: Microsoft Entra ID가 IdP (Identity Provider)
- * - Microsoft Entra ID가 사용자 인증을 담당
- * - 사용자가 Microsoft 계정으로 로그인하면 우리 앱이 인증 정보를 받음
- */
 @Configuration
-@ConfigurationProperties(prefix = "azure.oauth")
+@ConfigurationProperties(prefix = "azure")
 @Getter
 @Setter
-public class OAuthConfig {
+public class AzureOAuthConfig {
     private String clientId;
     private String clientSecret;
     private String tenantId;
     private String redirectUri;
     private String scope;
     
-    /**
-     * OAuth 2.0 Authorization URL 생성
-     */
     public String getAuthorizationUrl() {
         try {
             String encodedRedirectUri = URLEncoder.encode(redirectUri, StandardCharsets.UTF_8.toString());
@@ -45,9 +35,6 @@ public class OAuthConfig {
         }
     }
     
-    /**
-     * OAuth 2.0 Token URL
-     */
     public String getTokenUrl() {
         return String.format(
             "https://login.microsoftonline.com/%s/oauth2/v2.0/token",

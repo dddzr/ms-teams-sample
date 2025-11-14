@@ -114,20 +114,18 @@ mvnw.cmd spring-boot:run
 src/main/java/com/example/teams/
 ├── auth/                            # 인증 관련
 │   ├── config/                      # 인증 설정
-│   │   ├── AzureAdConfig.java       # Azure AD 설정
-│   │   ├── OAuthConfig.java         # OAuth 2.0 설정
-│   │   ├── SamlConfig.java          # SAML 2.0 설정
-│   │   └── SamlInitializer.java     # SAML 초기화
+│   │   ├── AppSamlConfig.java       # SAML 2.0 설정 (IdP: App)
+│   │   ├── AppSamlInitializer.java  # SAML 초기화 (IdP: App)
+│   │   └── AzureOAuthConfig.java    # OAuth 2.0 설정 (IdP: Azure)
 │   ├── controller/                  # 인증 컨트롤러
-│   │   ├── AppLoginController.java  # 앱 자체 로그인
-│   │   ├── OAuthController.java     # OAuth 2.0 인증
-│   │   ├── SamlController.java     # SAML 2.0 인증
-│   │   ├── MicrosoftLoginController.java  # Microsoft 단독 로그인
+│   │   ├── AppAuthController.java    # 앱 자체 로그인
+│   │   ├── AppSamlController.java    # SAML 2.0 인증 (IdP: App)
+│   │   ├── AzureAuthController.java  # Azure(Microsoft) 단독 로그인
+│   │   ├── AzureOAuthController.java # OAuth 2.0 인증 (IdP: Azure)
 │   │   └── CommonAuthController.java # 공통 인증
 │   └── service/                     # 인증 서비스
-│       ├── AuthService.java         # 인증 서비스
-│       ├── OAuthService.java        # OAuth 서비스
-│       └── SamlService.java         # SAML 서비스
+│       ├── AppSamlService.java      # SAML 서비스 (IdP: App)
+│       └── AzureOAuthService.java   # OAuth 서비스 (IdP: Azure)
 ├── controller/                      # 메인 컨트롤러
 │   └── MainController.java          # 메인 페이지
 ├── ms/                              # Microsoft Graph API 관련

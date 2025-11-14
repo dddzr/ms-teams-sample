@@ -1,6 +1,6 @@
 package com.example.teams.auth.controller;
 
-import com.example.teams.auth.service.AuthService;
+import com.example.teams.auth.service.AzureOAuthService;
 import com.example.teams.shared.port.GraphClientPort;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +23,9 @@ import org.springframework.web.servlet.view.RedirectView;
 @Controller
 @RequiredArgsConstructor
 @Slf4j
-public class MicrosoftLoginController {
+public class AzureLoginController {
     
-    private final AuthService authService;
+    private final AzureOAuthService azureOAuthService;
     private final GraphClientPort graphClientPort;
     
     /**
@@ -58,7 +58,7 @@ public class MicrosoftLoginController {
         
         try {
             // Access Token 및 Refresh Token 획득
-            String[] tokens = authService.getAccessToken(code);
+            String[] tokens = azureOAuthService.getAccessToken(code);
             String accessToken = tokens[0];
             // String refreshToken = tokens[1];
             
@@ -86,7 +86,7 @@ public class MicrosoftLoginController {
      */
     @GetMapping("/auth/microsoft/login/select-account")
     public RedirectView selectAccountLogin() {
-        String url = authService.getAuthorizationUrlWith("select_account", null);
+        String url = azureOAuthService.getAuthorizationUrlWith("select_account", null);
         return new RedirectView(url);
     }
 
@@ -95,7 +95,7 @@ public class MicrosoftLoginController {
      */
     @GetMapping("/auth/microsoft/login/force")
     public RedirectView forceLogin() {
-        String url = authService.getAuthorizationUrlWith("login", null);
+        String url = azureOAuthService.getAuthorizationUrlWith("login", null);
         return new RedirectView(url);
     }
     

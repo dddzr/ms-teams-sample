@@ -1,6 +1,6 @@
 package com.example.teams.auth.controller;
 
-import com.example.teams.auth.service.AuthService;
+import com.example.teams.auth.service.AzureOAuthService;
 import com.example.teams.shared.port.GraphClientPort;
 import com.example.teams.user.dto.LoginRequest;
 import com.example.teams.user.dto.RegisterRequest;
@@ -28,7 +28,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Slf4j
 public class AppLoginController {
     
-    private final AuthService authService;
+    private final AzureOAuthService azureOAuthService;
     private final GraphClientPort graphClientPort;
     private final UserService userService;
     
@@ -148,7 +148,7 @@ public class AppLoginController {
         
         try {
             // Access Token 획득
-            String[] tokens = authService.getAccessToken(code);
+            String[] tokens = azureOAuthService.getAccessToken(code);
             String accessToken = tokens[0];
             String refreshToken = tokens[1];
             

@@ -1,6 +1,6 @@
 package com.example.teams.auth.controller;
 
-import com.example.teams.auth.service.OAuthService;
+import com.example.teams.auth.service.AzureOAuthService;
 import com.example.teams.shared.exception.UnauthorizedException;
 import com.example.teams.shared.port.GraphClientPort;
 import com.example.teams.user.entity.User;
@@ -25,21 +25,14 @@ import org.springframework.web.servlet.view.RedirectView;
  * - 우리 앱은 Relying Party (RP)로 동작
  * - 사용자가 Microsoft 계정으로 로그인하면 우리 앱이 인증 정보를 받음
  * 
- * 엔드포인트:
- * - /auth/oauth/login - OAuth 로그인 시작
- * - /auth/oauth/callback - OAuth 콜백 처리
- * - /auth/oauth/login/select-account - 계정 선택 창 강제 표시
- * - /auth/oauth/login/force - 로그인 창 강제 표시
- * - /auth/oauth/login/with-hint - 특정 계정으로 로그인 힌트 전달
- * - /auth/oauth/link - 기존 앱 계정에 OAuth 연동
  */
 @Controller
 @RequestMapping("/auth/oauth")
 @RequiredArgsConstructor
 @Slf4j
-public class OAuthController {
+public class AzureOAuthController {
     
-    private final OAuthService oauthService;
+    private final AzureOAuthService azureOAuthService;
     private final GraphClientPort graphClientPort;
     private final UserService userService;
     
@@ -49,7 +42,7 @@ public class OAuthController {
      */
     @GetMapping("/login")
     public RedirectView login() {
-        String url = oauthService.getAuthorizationUrl();
+        String url = azureOAuthService.getAuthorizationUrl();
         log.info("OAuth 로그인 시작: {}", url);
         return new RedirectView(url);
     }
@@ -83,7 +76,7 @@ public class OAuthController {
         
         try {
             // Access Token 및 Refresh Token 획득
-            String[] tokens = oauthService.getAccessToken(code);
+            String[] tokens = azureOAuthService.getAccessToken(code);
             String accessToken = tokens[0];
             String refreshToken = tokens[1];
             
@@ -160,7 +153,7 @@ public class OAuthController {
      */
     @GetMapping("/login/select-account")
     public RedirectView selectAccountLogin() {
-        String url = oauthService.getAuthorizationUrlWith("select_account", null);
+        String url = azureOAuthService.getAuthorizationUrlWith("select_account", null);
         return new RedirectView(url);
     }
 
@@ -169,7 +162,7 @@ public class OAuthController {
      */
     @GetMapping("/login/force")
     public RedirectView forceLogin() {
-        String url = oauthService.getAuthorizationUrlWith("login", null);
+        String url = azureOAuthService.getAuthorizationUrlWith("login", null);
         return new RedirectView(url);
     }
 
@@ -204,7 +197,7 @@ public class OAuthController {
         
         try {
             // Access Token 획득
-            String[] tokens = oauthService.getAccessToken(code);
+            String[] tokens = azureOAuthService.getAccessToken(code);
             String accessToken = tokens[0];
             String refreshToken = tokens[1];
             

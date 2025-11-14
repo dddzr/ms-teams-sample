@@ -1,7 +1,7 @@
 package com.example.teams.auth.controller;
 
-import com.example.teams.auth.config.SamlConfig;
-import com.example.teams.auth.service.SamlService;
+import com.example.teams.auth.config.AppSamlConfig;
+import com.example.teams.auth.service.AppSamlService;
 import com.example.teams.user.entity.User;
 import com.example.teams.user.service.UserService;
 
@@ -22,20 +22,15 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * - Microsoft Entra ID는 Relying Party (RP)로 동작
  * - 사용자가 우리 포털에서 로그인하면 Microsoft Entra ID가 우리 포털의 인증 정보를 받음
  * 
- * 엔드포인트:
- * - /auth/saml/sso - SSO 시작 (Microsoft Entra ID로부터 AuthnRequest 수신)
- * - /auth/saml/metadata - IdP 메타데이터 제공
- * - /auth/saml/login - 로그인 페이지 (SAML 인증용)
- * - /auth/saml/assert - Assertion 생성 및 전송
  */
 @Controller
 @RequestMapping("/auth/saml")
 @RequiredArgsConstructor
 @Slf4j
-public class SamlController {
+public class AppSamlController {
     
-    private final SamlService samlService;
-    private final SamlConfig samlConfig;
+    private final AppSamlService appSamlService;
+    private final AppSamlConfig appSamlConfig;
     private final UserService userService;
     
     /**
@@ -133,7 +128,7 @@ public class SamlController {
             // SAML Response 생성
             // 주의: 여기서 user.getEmail()을 NameID로 사용하므로,
             // Microsoft Entra ID의 사용자와 이메일이 일치해야 합니다.
-            String samlResponse = samlService.createSamlResponse(
+            String samlResponse = appSamlService.createSamlResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
@@ -176,7 +171,7 @@ public class SamlController {
         }
         
         // Microsoft Entra ID의 ACS URL (설정에서 가져오기)
-        String acsUrl = samlConfig.getAcsUrl();
+        String acsUrl = appSamlConfig.getAcsUrl();
         
         log.info("SAML Assertion 전송 준비: acsUrl={}, samlResponse 길이={}, relayState={}", 
             acsUrl, samlResponse.length(), relayState);
@@ -211,7 +206,7 @@ public class SamlController {
     @ResponseBody
     public String metadata() {
         log.info("SAML 메타데이터 요청");
-        return samlService.generateMetadata();
+        return appSamlService.generateMetadata();
     }
     
     /**

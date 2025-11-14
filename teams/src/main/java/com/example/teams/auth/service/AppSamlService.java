@@ -22,7 +22,7 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Element;
 
-import com.example.teams.auth.config.SamlConfig;
+import com.example.teams.auth.config.AppSamlConfig;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -52,9 +52,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class SamlService {
+public class AppSamlService {
     
-    private final SamlConfig samlConfig;
+    private final AppSamlConfig appSamlConfig;
     private final ResourceLoader resourceLoader;
     
     /**
@@ -96,7 +96,7 @@ public class SamlService {
             response.setID("_" + UUID.randomUUID().toString());
             response.setVersion(SAMLVersion.VERSION_20);
             response.setIssueInstant(DateTime.now(DateTimeZone.UTC));
-            response.setDestination(samlConfig.getAcsUrl());
+            response.setDestination(appSamlConfig.getAcsUrl());
             response.setInResponseTo(inResponseTo);
             response.setIssuer(createIssuer());
             
@@ -175,15 +175,15 @@ public class SamlService {
         Subject subject = new org.opensaml.saml.saml2.core.impl.SubjectBuilder().buildObject();
         NameID nameID = new org.opensaml.saml.saml2.core.impl.NameIDBuilder().buildObject();
         nameID.setValue(email);
-        nameID.setFormat(samlConfig.getNameIdFormat());
+        nameID.setFormat(appSamlConfig.getNameIdFormat());
         subject.setNameID(nameID);
         
         // SubjectConfirmation 생성
         SubjectConfirmation subjectConfirmation = new org.opensaml.saml.saml2.core.impl.SubjectConfirmationBuilder().buildObject();
         subjectConfirmation.setMethod("urn:oasis:names:tc:SAML:2.0:cm:bearer");
         SubjectConfirmationData subjectConfirmationData = new org.opensaml.saml.saml2.core.impl.SubjectConfirmationDataBuilder().buildObject();
-        subjectConfirmationData.setRecipient(samlConfig.getAcsUrl());
-        subjectConfirmationData.setNotOnOrAfter(DateTime.now(DateTimeZone.UTC).plusSeconds(samlConfig.getAssertionValiditySeconds()));
+        subjectConfirmationData.setRecipient(appSamlConfig.getAcsUrl());
+        subjectConfirmationData.setNotOnOrAfter(DateTime.now(DateTimeZone.UTC).plusSeconds(appSamlConfig.getAssertionValiditySeconds()));
         subjectConfirmationData.setInResponseTo(inResponseTo);
         subjectConfirmation.setSubjectConfirmationData(subjectConfirmationData);
         subject.getSubjectConfirmations().add(subjectConfirmation);
@@ -241,7 +241,7 @@ public class SamlService {
      */
     private Issuer createIssuer() {
         Issuer issuer = new org.opensaml.saml.saml2.core.impl.IssuerBuilder().buildObject();
-        issuer.setValue(samlConfig.getEntityId());
+        issuer.setValue(appSamlConfig.getEntityId());
         return issuer;
     }
     
@@ -307,18 +307,18 @@ public class SamlService {
     private Credential loadCredential() throws Exception {
         try {
             // 인증서 로드
-            Resource certResource = resourceLoader.getResource(samlConfig.getCertificatePath());
+            Resource certResource = resourceLoader.getResource(appSamlConfig.getCertificatePath());
             if (!certResource.exists()) {
-                log.warn("인증서 파일을 찾을 수 없습니다: {}", samlConfig.getCertificatePath());
+                log.warn("인증서 파일을 찾을 수 없습니다: {}", appSamlConfig.getCertificatePath());
                 return null;
             }
             
             X509Certificate certificate = loadCertificate(certResource.getInputStream());
             
             // 개인 키 로드
-            Resource keyResource = resourceLoader.getResource(samlConfig.getPrivateKeyPath());
+            Resource keyResource = resourceLoader.getResource(appSamlConfig.getPrivateKeyPath());
             if (!keyResource.exists()) {
-                log.warn("개인 키 파일을 찾을 수 없습니다: {}", samlConfig.getPrivateKeyPath());
+                log.warn("개인 키 파일을 찾을 수 없습니다: {}", appSamlConfig.getPrivateKeyPath());
                 return null;
             }
             
@@ -430,9 +430,9 @@ public class SamlService {
     public String generateMetadata() {
         // TODO: 실제 메타데이터 생성 구현 필요
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-               "<EntityDescriptor xmlns=\"urn:oasis:names:tc:SAML:2.0:metadata\" entityID=\"" + samlConfig.getEntityId() + "\">\n" +
+               "<EntityDescriptor xmlns=\"urn:oasis:names:tc:SAML:2.0:metadata\" entityID=\"" + appSamlConfig.getEntityId() + "\">\n" +
                "  <IDPSSODescriptor protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\">\n" +
-               "    <SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"" + samlConfig.getSsoUrl() + "\"/>\n" +
+               "    <SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"" + appSamlConfig.getSsoUrl() + "\"/>\n" +
                "  </IDPSSODescriptor>\n" +
                "</EntityDescriptor>";
     }

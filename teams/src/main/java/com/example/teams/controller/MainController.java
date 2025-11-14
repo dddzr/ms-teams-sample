@@ -1,7 +1,6 @@
 package com.example.teams.controller;
 
-import com.example.teams.auth.service.OAuthService;
-import com.example.teams.auth.service.AuthService;
+import com.example.teams.auth.service.AzureOAuthService;
 import com.example.teams.shared.port.GraphClientPort;
 import com.example.teams.shared.util.AuthUtil;
 
@@ -18,8 +17,7 @@ public class MainController {
     
     private final GraphClientPort graphClientPort;
     private final AuthUtil authUtil;
-    private final AuthService authService;  // 기존 MS 단독 로그인용
-    private final OAuthService oauthService;  // OAuth 2.0 (MS가 IdP) 연동용
+    private final AzureOAuthService azureOAuthService;// OAuth 2.0 (MS가 IdP) 연동용
 
     /**
      * 메인 페이지
@@ -32,11 +30,11 @@ public class MainController {
     @GetMapping("/")
     public String index(Model model) {
         // 시나리오 1: MS 단독 로그인 (기존) - Azure 등록 엔드포인트 사용
-        String msAuthUrl = authService.getAuthorizationUrl();
+        String msAuthUrl = azureOAuthService.getAuthorizationUrl();
         model.addAttribute("msAuthUrl", msAuthUrl);
         
         // 시나리오 2: OAuth 2.0 (MS가 IdP) - Authorization URL
-        String oauthUrl = oauthService.getAuthorizationUrl();
+        String oauthUrl = azureOAuthService.getAuthorizationUrl();
         model.addAttribute("oauthUrl", oauthUrl);
         
         // 시나리오 3: SAML 2.0 (우리 포털이 IdP) - 메타데이터 URL

@@ -6,7 +6,7 @@ import okhttp3.*;
 import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 
-import com.example.teams.auth.config.AzureAdConfig;
+import com.example.teams.auth.config.AzureOAuthConfig;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,9 +17,9 @@ import java.net.URLEncoder;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AuthService {
+public class AzureOAuthService {
     
-    private final AzureAdConfig azureAdConfig;
+    private final AzureOAuthConfig azureOAuthConfig;
     private final OkHttpClient httpClient = new OkHttpClient();
     
     /**
@@ -29,16 +29,16 @@ public class AuthService {
     public String[] getAccessToken(String code) {
         try {
             RequestBody formBody = new FormBody.Builder()
-                .add("client_id", azureAdConfig.getClientId())
-                .add("client_secret", azureAdConfig.getClientSecret())
+                .add("client_id", azureOAuthConfig.getClientId())
+                .add("client_secret", azureOAuthConfig.getClientSecret())
                 .add("code", code)
-                .add("redirect_uri", azureAdConfig.getRedirectUri())
+                .add("redirect_uri", azureOAuthConfig.getRedirectUri())
                 .add("grant_type", "authorization_code")
-                .add("scope", azureAdConfig.getScope())
+                .add("scope", azureOAuthConfig.getScope())
                 .build();
             
             Request request = new Request.Builder()
-                .url(azureAdConfig.getTokenUrl())
+                .url(azureOAuthConfig.getTokenUrl())
                 .post(formBody)
                 .build();
             
@@ -93,14 +93,14 @@ public class AuthService {
      * Authorization URL 생성
      */
     public String getAuthorizationUrl() {
-        return azureAdConfig.getAuthorizationUrl();
+        return azureOAuthConfig.getAuthorizationUrl();
     }
 
     /**
      * 추가 파라미터(prompt, login_hint)를 포함한 Authorization URL 생성
      */
     public String getAuthorizationUrlWith(String prompt, String loginHint) {
-        String base = azureAdConfig.getAuthorizationUrl();
+        String base = azureOAuthConfig.getAuthorizationUrl();
         StringBuilder sb = new StringBuilder(base);
         boolean hasQuery = base.contains("?");
         String sep = hasQuery ? "&" : "?";
