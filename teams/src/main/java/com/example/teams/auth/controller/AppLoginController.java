@@ -35,7 +35,7 @@ public class AppLoginController {
     /**
      * 앱 자체 로그인 페이지
      */
-    @GetMapping("/auth/app/login")
+    @GetMapping("/login")
     public String appLoginPage() {
         return "auth/app/login";
     }
@@ -43,7 +43,7 @@ public class AppLoginController {
     /**
      * 앱 자체 로그인 처리
      */
-    @PostMapping("/auth/app/login")
+    @PostMapping("/login")
     public String appLogin(
             @RequestParam String email,
             @RequestParam String password,
@@ -80,7 +80,7 @@ public class AppLoginController {
     /**
      * 회원가입 페이지
      */
-    @GetMapping("/auth/app/register")
+    @GetMapping("/register")
     public String registerPage() {
         return "auth/app/register";
     }
@@ -88,7 +88,7 @@ public class AppLoginController {
     /**
      * 회원가입 처리
      */
-    @PostMapping("/auth/app/register")
+    @PostMapping("/register")
     public String register(
             @RequestParam String email,
             @RequestParam String password,
@@ -120,7 +120,7 @@ public class AppLoginController {
     /**
      * OAuth 연동 (기존 앱 계정에 OAuth 추가)
      */
-    @GetMapping("/auth/app/oauth/link")
+    @GetMapping("/oauth/link")
     public String linkOAuth(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,

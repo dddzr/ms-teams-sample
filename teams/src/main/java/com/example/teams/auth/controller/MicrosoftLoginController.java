@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.view.RedirectView;
@@ -31,8 +32,9 @@ public class MicrosoftLoginController {
      * OAuth Callback 처리 (MS 단독 로그인)
      * Azure에 등록된 엔드포인트 - 변경 불가
      * DB 연결 없이도 동작 가능
+     * response_mode=form_post로 인해 POST 요청으로 처리
      */
-    @GetMapping("/auth/microsoft/callback")
+    @PostMapping("/auth/microsoft/callback")
     public String callback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,

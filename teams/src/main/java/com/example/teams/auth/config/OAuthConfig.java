@@ -37,7 +37,7 @@ public class OAuthConfig {
             
             return String.format(
                 "https://login.microsoftonline.com/%s/oauth2/v2.0/authorize?" +
-                "client_id=%s&response_type=code&redirect_uri=%s&scope=%s&response_mode=query",
+                "client_id=%s&response_type=code&redirect_uri=%s&scope=%s&response_mode=form_post",
                 tenantId, clientId, encodedRedirectUri, encodedScope
             );
         } catch (UnsupportedEncodingException e) {

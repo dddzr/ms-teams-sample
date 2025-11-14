@@ -19,8 +19,9 @@
         }
         
         .container {
-            max-width: 1400px;
+            width: 100%;
             margin: 0 auto;
+            padding: 0 20px;
         }
         
         .header {
@@ -207,19 +208,160 @@
             border: 1px solid #cfc;
         }
         
-        .metadata-link {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #666;
+        .user-status-section {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            margin-bottom: 30px;
+            width: 100%;
         }
         
-        .metadata-link a {
-            color: #667eea;
+        .user-status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .user-status-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-status-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-status-header h2 {
+            color: #333;
+            font-size: 24px;
+            margin: 0;
+        }
+        
+        .btn-home {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
             text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .metadata-link a:hover {
-            text-decoration: underline;
+        .btn-home:hover:not(.disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .btn-home.disabled {
+            background: #ccc;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+        
+        .login-status-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .login-status-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+        }
+        
+        .login-status-card.ms-login {
+            border-left-color: #0078d4;
+        }
+        
+        .login-status-card.portal-login {
+            border-left-color: #28a745;
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            min-width: 250px;
+            flex-shrink: 0;
+            gap: 10px;
+        }
+        
+        .status-icon {
+            font-size: 24px;
+        }
+        
+        .status-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+            flex: 1;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .status-badge.logged-in {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.logged-out {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex: 1;
+        }
+        
+        .status-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .status-info-label {
+            font-weight: 600;
+            color: #666;
+            white-space: nowrap;
+        }
+        
+        .status-info-value {
+            color: #333;
+        }
+        
+        .status-info-value.empty {
+            color: #999;
+            font-style: italic;
         }
     </style>
 </head>
@@ -227,11 +369,64 @@
     <div class="container">
         <div class="header">
             <h1>🔐 인증 시나리오 테스트</h1>
-            <p>세 가지 인증 방식을 테스트할 수 있습니다</p>
+            <p>인증 방식을 테스트할 수 있습니다</p>
         </div>
         
         <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
         <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+        <!-- 사용자 로그인 상태 섹션 -->
+        <div class="user-status-section">
+            <div class="user-status-header">
+                <div class="user-status-header-left">
+                    <h2>👤 사용자 로그인 상태</h2>
+                    <a href="/home" class="btn-home disabled" id="homeBtn">🏠 홈으로 이동</a>
+                </div>
+                <div class="user-status-header-right">
+                    <a th:href="@{/auth/app/login}" class="btn-secondary">앱 로그인</a>
+                    <a th:href="@{/auth/app/register}" class="btn-secondary">회원가입</a>
+                </div>
+            </div>
+            <div class="login-status-grid">
+                <!-- 포털 로그인 상태 -->
+                <div class="login-status-card portal-login">
+                    <div class="status-header">
+                        <span class="status-icon">🔐</span>
+                        <span class="status-title">포털 로그인</span>
+                        <span class="status-badge logged-out" id="portalStatusBadge">로그인 안 됨</span>
+                    </div>
+                    <div class="status-info" id="portalStatusInfo">
+                        <div class="status-info-item">
+                            <span class="status-info-label">이름:</span>
+                            <span class="status-info-value empty" id="portalName">-</span>
+                        </div>
+                        <div class="status-info-item">
+                            <span class="status-info-label">이메일:</span>
+                            <span class="status-info-value empty" id="portalEmail">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- MS 로그인 상태 -->
+                <div class="login-status-card ms-login">
+                    <div class="status-header">
+                        <span class="status-icon">🔷</span>
+                        <span class="status-title">MS 로그인</span>
+                        <span class="status-badge logged-out" id="msStatusBadge">로그인 안 됨</span>
+                    </div>
+                    <div class="status-info" id="msStatusInfo">
+                        <div class="status-info-item">
+                            <span class="status-info-label">이름:</span>
+                            <span class="status-info-value empty" id="msName">-</span>
+                        </div>
+                        <div class="status-info-item">
+                            <span class="status-info-label">ID:</span>
+                            <span class="status-info-value empty" id="msId">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <div class="scenarios">
             <!-- 시나리오 1: MS 단독 로그인 (기존) -->
@@ -304,7 +499,7 @@
                 </div>
             </div>
             
-            <!-- 시나리오 3: SAML 2.0 (우리 포털이 IdP) -->
+            <!-- 시나리오 3: SAML 2.0 (우리 포털이 IdP) - 현재 작동x -->
             <div class="scenario-card">
                 <div class="scenario-header">
                     <div class="scenario-icon">🟣</div>
@@ -325,13 +520,8 @@
                         IdP 메타데이터 보기
                     </a>
                     <a th:href="@{/auth/saml/sso?SAMLRequest=demo}" class="btn-secondary">
-                        SAML SSO 테스트 (데모)
+                        SAML SSO 테스트 (현재 동작 x)
                     </a>
-                </div>
-                
-                <div class="metadata-link">
-                    <strong>메타데이터 URL:</strong><br>
-                    <a th:href="${samlMetadataUrl}" target="_blank" th:text="${samlMetadataUrl}"></a>
                 </div>
                 
                 <div class="info-box">
@@ -344,7 +534,8 @@
             </div>
         </div>
         
-        <!-- 앱 자체 로그인 (기존 기능) -->
+        <!-- 앱 자체 로그인 (기존 기능) - 주석처리됨 -->
+        <!--
         <div class="scenario-card" style="max-width: 500px; margin: 0 auto;">
             <div class="scenario-header">
                 <div class="scenario-icon">⚙️</div>
@@ -368,7 +559,111 @@
                 </a>
             </div>
         </div>
+        -->
     </div>
+    
+    <script>
+        let portalLoggedIn = false;
+        let msLoggedIn = false;
+        
+        // 포털 로그인 상태 확인
+        async function checkPortalLogin() {
+            try {
+                const response = await fetch('/api/app/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    portalLoggedIn = true;
+                    document.getElementById('portalStatusBadge').textContent = '로그인됨';
+                    document.getElementById('portalStatusBadge').className = 'status-badge logged-in';
+                    document.getElementById('portalName').textContent = user.name || 'N/A';
+                    document.getElementById('portalName').className = 'status-info-value';
+                    document.getElementById('portalEmail').textContent = user.email || 'N/A';
+                    document.getElementById('portalEmail').className = 'status-info-value';
+                    return true;
+                } else {
+                    portalLoggedIn = false;
+                    document.getElementById('portalStatusBadge').textContent = '로그인 안 됨';
+                    document.getElementById('portalStatusBadge').className = 'status-badge logged-out';
+                    document.getElementById('portalName').textContent = '-';
+                    document.getElementById('portalName').className = 'status-info-value empty';
+                    document.getElementById('portalEmail').textContent = '-';
+                    document.getElementById('portalEmail').className = 'status-info-value empty';
+                    return false;
+                }
+            } catch (error) {
+                portalLoggedIn = false;
+                document.getElementById('portalStatusBadge').textContent = '로그인 안 됨';
+                document.getElementById('portalStatusBadge').className = 'status-badge logged-out';
+                document.getElementById('portalName').textContent = '-';
+                document.getElementById('portalName').className = 'status-info-value empty';
+                document.getElementById('portalEmail').textContent = '-';
+                document.getElementById('portalEmail').className = 'status-info-value empty';
+                return false;
+            }
+        }
+        
+        // MS 로그인 상태 확인
+        async function checkMsLogin() {
+            try {
+                const response = await fetch('/api/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    msLoggedIn = true;
+                    document.getElementById('msStatusBadge').textContent = '로그인됨';
+                    document.getElementById('msStatusBadge').className = 'status-badge logged-in';
+                    document.getElementById('msName').textContent = user.displayName || 'N/A';
+                    document.getElementById('msName').className = 'status-info-value';
+                    document.getElementById('msId').textContent = user.id || 'N/A';
+                    document.getElementById('msId').className = 'status-info-value';
+                    return true;
+                } else {
+                    msLoggedIn = false;
+                    document.getElementById('msStatusBadge').textContent = '로그인 안 됨';
+                    document.getElementById('msStatusBadge').className = 'status-badge logged-out';
+                    document.getElementById('msName').textContent = '-';
+                    document.getElementById('msName').className = 'status-info-value empty';
+                    document.getElementById('msId').textContent = '-';
+                    document.getElementById('msId').className = 'status-info-value empty';
+                    return false;
+                }
+            } catch (error) {
+                msLoggedIn = false;
+                document.getElementById('msStatusBadge').textContent = '로그인 안 됨';
+                document.getElementById('msStatusBadge').className = 'status-badge logged-out';
+                document.getElementById('msName').textContent = '-';
+                document.getElementById('msName').className = 'status-info-value empty';
+                document.getElementById('msId').textContent = '-';
+                document.getElementById('msId').className = 'status-info-value empty';
+                return false;
+            }
+        }
+        
+        // 홈 버튼 활성화 상태 업데이트
+        function updateHomeButton() {
+            const homeBtn = document.getElementById('homeBtn');
+            if (portalLoggedIn || msLoggedIn) {
+                homeBtn.classList.remove('disabled');
+                homeBtn.onclick = null; // 기본 동작 허용
+            } else {
+                homeBtn.classList.add('disabled');
+                homeBtn.onclick = (e) => {
+                    e.preventDefault();
+                    return false;
+                };
+            }
+        }
+        
+        // 로그인 상태 확인 및 업데이트
+        async function checkLoginStatus() {
+            await Promise.all([checkPortalLogin(), checkMsLogin()]);
+            updateHomeButton();
+        }
+        
+        // 페이지 로드 시 로그인 상태 확인
+        window.addEventListener('DOMContentLoaded', () => {
+            checkLoginStatus();
+        });
+    </script>
     
 </body>
 </html>

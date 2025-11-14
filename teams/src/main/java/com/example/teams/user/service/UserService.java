@@ -78,11 +78,11 @@ public class UserService {
     }
     
     /**
-     * OAuth 로그인 시 사용자 찾기 또는 생성
-     * Microsoft ID로 사용자를 찾고, 없으면 생성합니다.
+     * OAuth 로그인 시 사용자 찾기
+     * Microsoft ID로 사용자를 찾고, 없으면 로그인 실패 처리합니다.
      */
     @Transactional
-    public User findOrCreateOAuthUser(String microsoftId, String email, String name, String userPrincipalName) {
+    public User findOAuthUser(String microsoftId, String email, String name, String userPrincipalName) {
         Optional<User> existingUser = userRepository.findByMicrosoftId(microsoftId);
         
         if (existingUser.isPresent()) {
@@ -118,21 +118,8 @@ public class UserService {
             }
         }
         
-        // 새 사용자 생성 (OAuth만 사용)
-        User newUser = User.builder()
-                .email(email != null ? email : userPrincipalName)
-                .name(name != null ? name : email)
-                .microsoftId(microsoftId)
-                .userPrincipalName(userPrincipalName)
-                .loginType(User.LoginType.OAUTH)
-                .oauthLinkedAt(LocalDateTime.now())
-                .lastLoginAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .build();
-        
-        User savedUser = userRepository.save(newUser);
-        log.info("OAuth 사용자 생성: {}", savedUser.getEmail());
-        return savedUser;
+        // 사용자를 찾을 수 없으면 로그인 실패
+        throw new UnauthorizedException("등록된 사용자가 아닙니다. 먼저 회원가입을 해주세요.");
     }
     
     /**
@@ -174,6 +161,17 @@ public class UserService {
     }
     
     /**
+     * 마지막 로그인 시간 업데이트
+     */
+    @Transactional
+    public void updateLastLoginAt(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
+    
+    /**
      * Access Token 저장
      */
     @Transactional
@@ -182,6 +180,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         user.setAccessToken(accessToken);
         user.setRefreshToken(refreshToken);
+        user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
     }
 }

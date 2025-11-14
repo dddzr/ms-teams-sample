@@ -1,6 +1,7 @@
 package com.example.teams.auth.controller;
 
 import com.example.teams.auth.service.OAuthService;
+import com.example.teams.shared.exception.UnauthorizedException;
 import com.example.teams.shared.port.GraphClientPort;
 import com.example.teams.user.entity.User;
 import com.example.teams.user.service.UserService;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -55,8 +57,9 @@ public class OAuthController {
     /**
      * OAuth Callback 처리
      * Microsoft Entra ID에서 인증 코드를 받아 토큰으로 교환
+     * response_mode=form_post로 인해 POST 요청으로 처리
      */
-    @GetMapping("/callback")
+    @PostMapping("/callback")
     public String callback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,
@@ -84,9 +87,9 @@ public class OAuthController {
             String accessToken = tokens[0];
             String refreshToken = tokens[1];
             
-            // 세션에 저장
-            session.setAttribute("accessToken", accessToken);
-            
+            // 세션에 저장 - sdk사용으로 불필요함.
+            // session.setAttribute("accessToken", accessToken);
+
             // Graph Client 초기화
             graphClientPort.initializeGraphClient(accessToken);
             
@@ -98,24 +101,46 @@ public class OAuthController {
                 };
             });
             
-            // DB에 사용자 저장 또는 업데이트
-            User user = userService.findOrCreateOAuthUser(
-                graphUser.getId(),
-                graphUser.getMail(),
-                graphUser.getDisplayName(),
-                graphUser.getUserPrincipalName()
-            );
+            // userPrincipalName으로 DB의 email과 매핑
+            String userPrincipalName = graphUser.getUserPrincipalName();
+            if (userPrincipalName == null || userPrincipalName.isEmpty()) {
+                throw new UnauthorizedException("userPrincipalName 정보가 없습니다.");
+            }
             
-            // Refresh Token 저장
+            log.info("OAuth 로그인 시도: userPrincipalName={}, mail={}", userPrincipalName, graphUser.getMail());
+            
+            // userPrincipalName을 email로 사용하여 DB에서 사용자 찾기
+            User user = userService.findByEmail(userPrincipalName)
+                    .orElseThrow(() -> new UnauthorizedException("등록된 사용자가 아닙니다. 먼저 회원가입을 해주세요."));
+            
+            // OAuth 정보 업데이트 (없으면 추가)
+            if (user.getMicrosoftId() == null) {
+                userService.linkOAuth(
+                    user.getId(),
+                    graphUser.getId(),
+                    graphUser.getUserPrincipalName()
+                );
+            }
+            
+            // Refresh Token 저장 및 마지막 로그인 시간 업데이트 - TODO: 암호화
             if (refreshToken != null) {
                 userService.saveAccessToken(user.getId(), accessToken, refreshToken);
+            } else {
+                // Refresh Token이 없어도 마지막 로그인 시간은 업데이트
+                userService.updateLastLoginAt(user.getId());
             }
+            
+            // 최신 사용자 정보 다시 조회
+            user = userService.findByEmail(userPrincipalName)
+                    .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다."));
             
             // 세션에 사용자 정보 저장 (앱 로그인과 동일한 형식)
             session.setAttribute("userId", user.getId());
             session.setAttribute("userEmail", user.getEmail());
             session.setAttribute("userName", user.getName());
             session.setAttribute("loginType", "OAUTH");
+            // Graph Client 초기화를 위해 accessToken도 세션에 저장
+            session.setAttribute("accessToken", accessToken);
             
             log.info("OAuth 인증 성공! 사용자 ID: {}", user.getId());
             redirectAttributes.addFlashAttribute("success", 

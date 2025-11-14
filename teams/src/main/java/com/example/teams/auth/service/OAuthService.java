@@ -45,7 +45,8 @@ public class OAuthService {
                 .add("grant_type", "authorization_code")
                 .add("scope", oauthConfig.getScope())
                 .build();
-            
+            // TODO: state 추가 및 응답에서 요청과 동일한지 검증 (CSRF 공격 방지
+
             Request request = new Request.Builder()
                 .url(oauthConfig.getTokenUrl())
                 .post(formBody)

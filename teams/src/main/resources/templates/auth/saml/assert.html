@@ -80,16 +80,155 @@
         </div>
         
         <!-- SAML Response를 Microsoft Entra ID로 POST 전송 -->
-        <form id="samlForm" th:action="${acsUrl}" method="post">
-            <input type="hidden" name="SAMLResponse" th:value="${samlResponse}">
-            <input type="hidden" name="RelayState" th:value="${relayState}">
+        <!-- Thymeleaf가 Base64 문자열을 이스케이프할 수 있으므로, JavaScript에서 직접 설정 -->
+        <form id="samlForm" method="post" style="display: none;" enctype="application/x-www-form-urlencoded">
+            <input type="hidden" name="SAMLResponse" id="samlResponseInput" value="">
+            <input type="hidden" name="RelayState" id="relayStateInput" value="">
         </form>
         
-        <script>
-            // 자동으로 폼 제출
-            window.onload = function() {
-                document.getElementById('samlForm').submit();
-            };
+        <!-- 서버에서 받은 값을 JavaScript 변수로 전달 (data 속성 사용) -->
+        <div id="samlData" 
+             th:data-acs-url="${acsUrl}"
+             th:data-saml-response="${samlResponse}"
+             th:data-relay-state="${relayState}"
+             style="display: none;"></div>
+        
+        <!-- 디버깅용 수동 제출 버튼 (자동 제출 실패 시 사용) -->
+        <div id="manualSubmit" style="display: none; margin-top: 20px; text-align: center;">
+            <button onclick="submitForm()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                수동으로 제출하기
+            </button>
+        </div>
+        
+        <script th:inline="javascript">
+            // 서버에서 받은 값 가져오기 (data 속성에서)
+            var samlDataElement = document.getElementById('samlData');
+            var acsUrl = samlDataElement ? samlDataElement.getAttribute('data-acs-url') : '';
+            var samlResponse = samlDataElement ? samlDataElement.getAttribute('data-saml-response') : '';
+            var relayState = samlDataElement ? samlDataElement.getAttribute('data-relay-state') : '';
+            
+            console.log('=== 서버에서 받은 데이터 ===');
+            console.log('ACS URL:', acsUrl);
+            console.log('SAML Response 길이:', samlResponse ? samlResponse.length : 0);
+            console.log('RelayState:', relayState);
+            
+            // 폼 제출 함수
+            function submitForm() {
+                try {
+                    console.log('📤 폼 제출 시작...');
+                    var form = document.getElementById('samlForm');
+                    
+                    if (!form) {
+                        console.error('❌ 폼을 찾을 수 없습니다!');
+                        alert('폼을 찾을 수 없습니다.');
+                        return;
+                    }
+                    
+                    // 폼 action 설정
+                    if (acsUrl) {
+                        form.action = acsUrl;
+                    }
+                    
+                    // Hidden input 필드에 값 설정
+                    var responseInput = document.getElementById('samlResponseInput');
+                    var relayStateInput = document.getElementById('relayStateInput');
+                    
+                    if (!responseInput) {
+                        console.error('❌ SAML Response input을 찾을 수 없습니다!');
+                        alert('SAML Response input을 찾을 수 없습니다.');
+                        return;
+                    }
+                    
+                    // 값 설정
+                    responseInput.value = samlResponse || '';
+                    if (relayStateInput) {
+                        relayStateInput.value = relayState || '';
+                    }
+                    
+                    // 설정된 값 확인
+                    var finalResponse = responseInput.value || '';
+                    var finalRelayState = relayStateInput ? relayStateInput.value || '' : '';
+                    
+                    console.log('=== SAML Assertion 전송 디버깅 ===');
+                    console.log('ACS URL:', form.action);
+                    console.log('SAML Response 길이:', finalResponse ? finalResponse.length : 0);
+                    console.log('SAML Response 처음 100자:', finalResponse ? finalResponse.substring(0, 100) : 'null');
+                    console.log('RelayState:', finalRelayState);
+                    console.log('Response Input 존재:', !!responseInput);
+                    console.log('Response Input value 타입:', typeof finalResponse);
+                    
+                    // SAML Response가 있는지 확인
+                    if (!finalResponse || finalResponse.length === 0) {
+                        console.error('❌ SAML Response가 비어있습니다!');
+                        console.error('Response Input value:', finalResponse);
+                        console.error('Response Input HTML:', responseInput.outerHTML);
+                        console.error('서버에서 받은 원본:', samlResponse);
+                        alert('SAML Response가 비어있습니다. 로그를 확인하세요.');
+                        document.getElementById('manualSubmit').style.display = 'block';
+                        return;
+                    }
+                    
+                    if (finalResponse.length < 100) {
+                        console.warn('⚠️ SAML Response가 비정상적으로 짧습니다:', finalResponse.length);
+                    }
+                    
+                    // 폼 데이터 확인
+                    var formData = new FormData(form);
+                    console.log('FormData 확인:');
+                    for (var pair of formData.entries()) {
+                        var value = pair[1];
+                        var preview = value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : 'null';
+                        console.log('  ' + pair[0] + ':', preview, '(길이: ' + (value ? value.length : 0) + ')');
+                    }
+                    
+                    // Network 탭에서 확인할 수 있도록 상세 로그
+                    console.log('📡 POST 요청 정보:');
+                    console.log('  URL:', form.action);
+                    console.log('  Method: POST');
+                    console.log('  Content-Type: application/x-www-form-urlencoded');
+                    console.log('  SAMLResponse 길이:', finalResponse.length);
+                    console.log('  RelayState:', finalRelayState);
+                    
+                    // 실제 전송될 데이터 확인 (처음 200자만)
+                    var encodedResponse = encodeURIComponent(finalResponse);
+                    console.log('  인코딩된 SAMLResponse 길이:', encodedResponse.length);
+                    console.log('  인코딩된 SAMLResponse 처음 200자:', encodedResponse.substring(0, 200));
+                    
+                    console.log('✅ 폼 제출 실행...');
+                    
+                    form.submit();
+                    
+                } catch (error) {
+                    console.error('❌ 폼 제출 중 오류 발생:', error);
+                    alert('폼 제출 중 오류가 발생했습니다: ' + error.message);
+                    document.getElementById('manualSubmit').style.display = 'block';
+                }
+            }
+            
+            // 페이지 로드 완료 후 자동 제출
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('📄 DOM 로드 완료');
+                
+                // 약간의 지연을 두어 모든 리소스가 로드된 후 제출
+                setTimeout(function() {
+                    submitForm();
+                }, 500);
+            });
+            
+            // window.onload도 백업으로 사용
+            window.addEventListener('load', function() {
+                console.log('📄 Window 로드 완료');
+                
+                // DOMContentLoaded가 실행되지 않은 경우를 대비
+                setTimeout(function() {
+                    var form = document.getElementById('samlForm');
+                    if (form && !form.dataset.submitted) {
+                        console.log('⚠️ DOMContentLoaded가 실행되지 않았습니다. window.onload에서 제출합니다.');
+                        form.dataset.submitted = 'true';
+                        submitForm();
+                    }
+                }, 2000);
+            });
         </script>
     </div>
 </body>
