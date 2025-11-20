@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알림</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .dialog-container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .dialog-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        
+        .dialog-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .dialog-message {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            white-space: pre-wrap;
+        }
+        
+        .dialog-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .dialog-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .dialog-button:active {
+            transform: translateY(0);
+        }
+        
+        .dialog-error {
+            color: #c33;
+        }
+        
+        .dialog-success {
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="dialog-container">
+        <div class="dialog-icon" id="dialogIcon">ℹ️</div>
+        <div class="dialog-title" id="dialogTitle">알림</div>
+        <div class="dialog-message" id="dialogMessage"></div>
+        <button class="dialog-button" onclick="closeDialog()">확인</button>
+    </div>
+    
+    <!-- Microsoft Teams JavaScript SDK -->
+    <script src="https://res.cdn.office.net/teams-js/2.0.0/js/MicrosoftTeams.min.js" crossorigin="anonymous"></script>
+    
+    <script>
+        // Teams Dialog 내부에서는 SDK 초기화를 하지 않음
+        // 다이얼로그는 부모 페이지의 Teams SDK 컨텍스트에서 실행되므로
+        // 별도의 초기화 없이 바로 dialog.submit()을 사용할 수 있음
+        
+        // 페이지 로드 완료 후 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            // URL 파라미터에서 메시지 읽기
+            const urlParams = new URLSearchParams(window.location.search);
+            const type = urlParams.get('type') || 'info'; // info, success, error
+            const message = urlParams.get('message') || '알림 메시지가 없습니다.';
+            const title = urlParams.get('title') || '알림';
+            
+            // 아이콘 및 스타일 설정
+            const iconEl = document.getElementById('dialogIcon');
+            const titleEl = document.getElementById('dialogTitle');
+            const messageEl = document.getElementById('dialogMessage');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (messageEl) messageEl.textContent = decodeURIComponent(message);
+            
+            if (iconEl) {
+                if (type === 'error') {
+                    iconEl.textContent = '❌';
+                    iconEl.className = 'dialog-icon dialog-error';
+                } else if (type === 'success') {
+                    iconEl.textContent = '✅';
+                    iconEl.className = 'dialog-icon dialog-success';
+                } else {
+                    iconEl.textContent = 'ℹ️';
+                }
+            }
+        });
+        
+        // Teams 환경에서 닫기
+        function closeDialog() {
+            // Teams Dialog 내부에서는 SDK 초기화 없이 바로 submit() 호출
+            if (typeof microsoftTeams !== 'undefined' && 
+                typeof microsoftTeams.dialog !== 'undefined' &&
+                typeof microsoftTeams.dialog.submit === 'function') {
+                try {
+                    // Teams Dialog API v2: submit()에 결과 객체 전달
+                    microsoftTeams.dialog.submit({ result: 'closed' });
+                } catch (error) {
+                    console.error('Dialog submit() 실패:', error);
+                    // submit() 실패 시 fallback: window.close() 시도
+                    try {
+                        window.close();
+                    } catch (e) {
+                        console.error('window.close() 실패:', e);
+                    }
+                }
+            } else {
+                // Teams SDK가 없거나 Dialog API를 사용할 수 없는 경우
+                try {
+                    window.close();
+                } catch (e) {
+                    console.error('window.close() 실패:', e);
+                }
+            }
+        }
+        
+        // Enter 키로 닫기
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+                closeDialog();
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -172,13 +172,13 @@ public class UserService {
     }
     
     /**
-     * Access Token 저장
+     * Refresh Token 저장
+     * Access Token은 세션에만 저장하고, Refresh Token만 DB에 저장
      */
     @Transactional
-    public void saveAccessToken(Long userId, String accessToken, String refreshToken) {
+    public void saveRefreshToken(Long userId, String refreshToken) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        user.setAccessToken(accessToken);
         user.setRefreshToken(refreshToken);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);

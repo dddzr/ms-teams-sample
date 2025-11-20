@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,6 +36,7 @@ public class AzureOAuthController {
     private final AzureOAuthService azureOAuthService;
     private final GraphClientPort graphClientPort;
     private final UserService userService;
+    private final CommonAuthController commonAuthController;
     
     /**
      * OAuth 로그인 시작
@@ -42,9 +44,127 @@ public class AzureOAuthController {
      */
     @GetMapping("/login")
     public RedirectView login() {
-        String url = azureOAuthService.getAuthorizationUrl();
+        String url = azureOAuthService.getOAuthAuthorizationUrl();
         log.info("OAuth 로그인 시작: {}", url);
         return new RedirectView(url);
+    }
+    
+    /**
+     * Teams 인증 콜백 처리 (GET 요청)
+     * Teams SDK의 authenticate() 메서드에서 사용
+     * response_mode=query로 인해 GET 요청으로 처리
+     */
+    @GetMapping("/callback")
+    public String teamsCallback(
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String error,
+            @RequestParam(required = false) String error_description,
+            jakarta.servlet.http.HttpServletRequest request,
+            HttpSession session,
+            Model model) {
+        
+            log.info("=== Teams OAuth 콜백 요청 수신 ===");
+            log.info("Request URL: {}", request.getRequestURL());
+            log.info("Query String: {}", request.getQueryString());
+            log.info("code: {}", code != null ? "있음" : "없음");
+            log.info("error: {}", error);
+        
+        if (error != null) {
+            log.error("Teams OAuth 오류: {} - {}", error, error_description);
+            model.addAttribute("error", error_description != null ? error_description : error);
+            return "auth/microsoft/teams-callback";
+        }
+        
+        if (code == null) {
+            log.error("Teams Authorization code가 없습니다");
+            model.addAttribute("error", "인증 코드가 없습니다");
+            return "auth/microsoft/teams-callback";
+        }
+        
+        try {
+            log.info("Authorization code로 토큰 교환 시작...");
+            // Access Token 및 Refresh Token 획득 (OAuth 설정 사용)
+            String[] tokens = azureOAuthService.getAccessToken(code, true);
+            String accessToken = tokens[0];
+            String refreshToken = tokens[1];
+            
+            // Graph Client 초기화
+            graphClientPort.initializeGraphClient(accessToken);
+            
+            // Microsoft Graph API로 사용자 정보 가져오기
+            GraphServiceClient graphClient = graphClientPort.getGraphClient();
+            com.microsoft.graph.models.User graphUser = graphClient.me().get(requestConfiguration -> {
+                requestConfiguration.queryParameters.select = new String[]{
+                    "id", "displayName", "mail", "userPrincipalName"
+                };
+            });
+            
+            // userPrincipalName으로 DB의 email과 매핑
+            String userPrincipalName = graphUser.getUserPrincipalName();
+            if (userPrincipalName == null || userPrincipalName.isEmpty()) {
+                // OAuth 로그인 실패 시 MS 토큰 및 Graph Client도 제거 (OAuth 실패 = MS 로그인도 실패)
+                commonAuthController.clearMsAuthentication(session, false);
+                log.error("userPrincipalName 정보가 없습니다. OAuth 로그인 실패 - MS 토큰 및 Graph Client 제거");
+                model.addAttribute("error", "userPrincipalName 정보가 없습니다.");
+                return "auth/microsoft/teams-callback";
+            }
+            
+            log.info("OAuth 로그인 시도: userPrincipalName={}, mail={}", userPrincipalName, graphUser.getMail());
+            
+            // userPrincipalName을 email로 사용하여 DB에서 사용자 찾기
+            User user = userService.findByEmail(userPrincipalName)
+                    .orElse(null);
+            
+            if (user == null) {
+                // OAuth 로그인 실패 시 MS 토큰 및 Graph Client도 제거 (OAuth 실패 = MS 로그인도 실패)
+                commonAuthController.clearMsAuthentication(session, false);
+                log.error("등록된 사용자가 아닙니다. OAuth 로그인 실패 - MS 토큰 및 Graph Client 제거: userPrincipalName={}", userPrincipalName);
+                model.addAttribute("error", "등록된 사용자가 아닙니다. 먼저 회원가입을 해주세요.");
+                return "auth/microsoft/teams-callback";
+            }
+            
+            // OAuth 정보 업데이트 (없으면 추가)
+            // linkOAuth()가 업데이트된 User를 반환하므로 반환값 사용
+            if (user.getMicrosoftId() == null) {
+                user = userService.linkOAuth(
+                    user.getId(),
+                    graphUser.getId(),
+                    graphUser.getUserPrincipalName()
+                );
+            }
+            
+            // Refresh Token 저장 및 마지막 로그인 시간 업데이트 (Access Token은 세션에만 저장)
+            if (refreshToken != null) {
+                userService.saveRefreshToken(user.getId(), refreshToken);
+            } else {
+                userService.updateLastLoginAt(user.getId());
+            }
+            
+            // JPA 영속성 컨텍스트가 자동으로 업데이트를 반영하므로 첫 번째 조회한 user 객체를 그대로 사용
+            // 세션에 사용자 정보 저장
+            session.setAttribute("userId", user.getId());
+            session.setAttribute("userEmail", user.getEmail());
+            session.setAttribute("userName", user.getName());
+            session.setAttribute("loginType", "OAUTH");
+            session.setAttribute("accessToken", accessToken);
+            
+            log.info("Teams OAuth 인증 성공! 사용자 ID: {}", user.getId());
+            model.addAttribute("success", true);
+            
+            return "auth/microsoft/teams-callback";
+        } catch (UnauthorizedException e) {
+            // UnauthorizedException은 명시적으로 처리 (OAuth 로그인 실패)
+            commonAuthController.clearMsAuthentication(session, false);
+            log.error("OAuth 로그인 실패 (UnauthorizedException): {} - MS 토큰 및 Graph Client 제거", e.getMessage());
+            model.addAttribute("error", e.getMessage());
+            return "auth/microsoft/teams-callback";
+        } catch (Exception e) {
+            // 기타 예외 처리 (OAuth 로그인 실패)
+            commonAuthController.clearMsAuthentication(session, false);
+            log.error("Teams OAuth 토큰 교환 실패 - MS 토큰 및 Graph Client 제거", e);
+            model.addAttribute("error", "토큰 획득 실패: " + e.getMessage());
+            return "auth/microsoft/teams-callback";
+        }
     }
     
     /**
@@ -75,8 +195,8 @@ public class AzureOAuthController {
         }
         
         try {
-            // Access Token 및 Refresh Token 획득
-            String[] tokens = azureOAuthService.getAccessToken(code);
+            // Access Token 및 Refresh Token 획득 (OAuth 설정 사용)
+            String[] tokens = azureOAuthService.getAccessToken(code, true);
             String accessToken = tokens[0];
             String refreshToken = tokens[1];
             
@@ -107,26 +227,24 @@ public class AzureOAuthController {
                     .orElseThrow(() -> new UnauthorizedException("등록된 사용자가 아닙니다. 먼저 회원가입을 해주세요."));
             
             // OAuth 정보 업데이트 (없으면 추가)
+            // linkOAuth()가 업데이트된 User를 반환하므로 반환값 사용
             if (user.getMicrosoftId() == null) {
-                userService.linkOAuth(
+                user = userService.linkOAuth(
                     user.getId(),
                     graphUser.getId(),
                     graphUser.getUserPrincipalName()
                 );
             }
             
-            // Refresh Token 저장 및 마지막 로그인 시간 업데이트 - TODO: 암호화
+            // Refresh Token 저장 및 마지막 로그인 시간 업데이트 - TODO: 암호화 (Access Token은 세션에만 저장)
             if (refreshToken != null) {
-                userService.saveAccessToken(user.getId(), accessToken, refreshToken);
+                userService.saveRefreshToken(user.getId(), refreshToken);
             } else {
                 // Refresh Token이 없어도 마지막 로그인 시간은 업데이트
                 userService.updateLastLoginAt(user.getId());
             }
             
-            // 최신 사용자 정보 다시 조회
-            user = userService.findByEmail(userPrincipalName)
-                    .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다."));
-            
+            // JPA 영속성 컨텍스트가 자동으로 업데이트를 반영하므로 첫 번째 조회한 user 객체를 그대로 사용
             // 세션에 사용자 정보 저장 (앱 로그인과 동일한 형식)
             session.setAttribute("userId", user.getId());
             session.setAttribute("userEmail", user.getEmail());
@@ -196,8 +314,8 @@ public class AzureOAuthController {
         }
         
         try {
-            // Access Token 획득
-            String[] tokens = azureOAuthService.getAccessToken(code);
+            // Access Token 획득 (OAuth 설정 사용)
+            String[] tokens = azureOAuthService.getAccessToken(code, true);
             String accessToken = tokens[0];
             String refreshToken = tokens[1];
             
@@ -219,9 +337,9 @@ public class AzureOAuthController {
                 graphUser.getUserPrincipalName()
             );
             
-            // Access Token 저장
+            // Refresh Token 저장 (Access Token은 세션에만 저장)
             if (refreshToken != null) {
-                userService.saveAccessToken(user.getId(), accessToken, refreshToken);
+                userService.saveRefreshToken(user.getId(), refreshToken);
             }
             
             // 세션에 Access Token 저장

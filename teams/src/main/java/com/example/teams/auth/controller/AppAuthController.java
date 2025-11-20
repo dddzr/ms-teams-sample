@@ -26,7 +26,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/auth/app")
 @RequiredArgsConstructor
 @Slf4j
-public class AppLoginController {
+public class AppAuthController {
     
     private final AzureOAuthService azureOAuthService;
     private final GraphClientPort graphClientPort;
@@ -59,12 +59,6 @@ public class AppLoginController {
             session.setAttribute("userEmail", user.getEmail());
             session.setAttribute("userName", user.getName());
             session.setAttribute("loginType", "APP");
-            
-            // OAuth가 연동되어 있으면 Access Token도 세션에 저장
-            if (user.isOAuthLinked() && user.getAccessToken() != null) {
-                session.setAttribute("accessToken", user.getAccessToken());
-                graphClientPort.initializeGraphClient(user.getAccessToken());
-            }
             
             log.info("앱 로그인 성공: {}", user.getEmail());
             redirectAttributes.addFlashAttribute("success", "로그인 성공!");
@@ -170,9 +164,9 @@ public class AppLoginController {
                 graphUser.getUserPrincipalName()
             );
             
-            // Access Token 저장
+            // Refresh Token 저장 (Access Token은 세션에만 저장)
             if (refreshToken != null) {
-                userService.saveAccessToken(user.getId(), accessToken, refreshToken);
+                userService.saveRefreshToken(user.getId(), refreshToken);
             }
             
             // 세션에 Access Token 저장

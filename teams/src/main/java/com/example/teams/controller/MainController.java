@@ -30,12 +30,23 @@ public class MainController {
     @GetMapping("/")
     public String index(Model model) {
         // 시나리오 1: MS 단독 로그인 (기존) - Azure 등록 엔드포인트 사용
+        // 일반 브라우저용 (response_mode=form_post)
         String msAuthUrl = azureOAuthService.getAuthorizationUrl();
         model.addAttribute("msAuthUrl", msAuthUrl);
         
+        // Teams 환경용 (response_mode=query)
+        String msAuthUrlForTeams = azureOAuthService.getAuthorizationUrlForTeams();
+        model.addAttribute("msAuthUrlForTeams", msAuthUrlForTeams);
+        
         // 시나리오 2: OAuth 2.0 (MS가 IdP) - Authorization URL
-        String oauthUrl = azureOAuthService.getAuthorizationUrl();
+        // OAuth는 azure.oauth.* 설정을 사용
+        // 일반 브라우저용 (response_mode=form_post)
+        String oauthUrl = azureOAuthService.getOAuthAuthorizationUrl();
         model.addAttribute("oauthUrl", oauthUrl);
+        
+        // Teams 환경용 (response_mode=query)
+        String oauthUrlForTeams = azureOAuthService.getOAuthAuthorizationUrlForTeams();
+        model.addAttribute("oauthUrlForTeams", oauthUrlForTeams);
         
         // 시나리오 3: SAML 2.0 (우리 포털이 IdP) - 메타데이터 URL
         String samlMetadataUrl = "/auth/saml/metadata";

@@ -24,18 +24,34 @@ public class CommonAuthController {
     private final GraphClientPort graphClientPort;
     
     /**
-     * 로그아웃 (공통)
-     * 모든 인증 방식(앱, MS, OAuth, SAML)에 공통으로 사용되는 로그아웃 기능
+     * MS 인증 정보 초기화 (세션 및 Graph Client)
+     * OAuth 로그인 실패 시 또는 로그아웃 시 사용
+     * 
+     * @param session HTTP 세션
+     * @param invalidateSession true면 세션 전체 무효화, false면 accessToken만 제거
      */
-    @GetMapping("/logout")
-    public String logout(HttpSession session, RedirectAttributes redirectAttributes) {
+    public void clearMsAuthentication(HttpSession session, boolean invalidateSession) {
         // Graph Client 리셋
         if (graphClientPort.isGraphClientInitialized()) {
             graphClientPort.reset();
         }
         
-        // 세션 무효화
-        session.invalidate();
+        if (invalidateSession) {
+            // 세션 전체 무효화 (로그아웃)
+            session.invalidate();
+        } else {
+            // accessToken만 제거 (OAuth 로그인 실패)
+            session.removeAttribute("accessToken");
+        }
+    }
+    
+    /**
+     * 로그아웃 (공통)
+     * 모든 인증 방식(앱, MS, OAuth, SAML)에 공통으로 사용되는 로그아웃 기능
+     */
+    @GetMapping("/logout")
+    public String logout(HttpSession session, RedirectAttributes redirectAttributes) {
+        clearMsAuthentication(session, true);
         
         log.info("로그아웃 완료");
         redirectAttributes.addFlashAttribute("success", "로그아웃 되었습니다");

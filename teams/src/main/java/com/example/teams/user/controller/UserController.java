@@ -7,10 +7,12 @@ import com.example.teams.user.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -32,13 +34,16 @@ public class UserController {
     /**
      * 앱(DB) 사용자 정보 조회
      * 세션의 userId를 기반으로 DB에서 사용자 정보를 조회합니다.
+     * MS 단독 로그인인 경우 userId가 없을 수 있으므로 404를 반환합니다.
      */
     @GetMapping("/me")
     @ResponseBody
     public Map<String, Object> getAppUser(HttpSession session) {
         Long userId = authUtil.getUserId(session);
         if (userId == null) {
-            throw new RuntimeException("로그인이 필요합니다.");
+            // MS 단독 로그인 또는 세션이 전달되지 않은 경우 404 반환
+            // 프론트엔드에서 response.ok로 체크하므로 정상적으로 처리됨
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "앱 로그인이 필요합니다.");
         }
         
         User user = userService.findById(userId)

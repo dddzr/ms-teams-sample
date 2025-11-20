@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
-public class SamlInitializer {
+public class AppSamlInitializer {
     
     @PostConstruct
     public void initialize() {

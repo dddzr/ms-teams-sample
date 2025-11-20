@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "saml.idp")
 @Getter
 @Setter
-public class SamlConfig {
+public class AppSamlConfig {
     /**
      * 우리 포털의 Entity ID (IdP 식별자)
      */

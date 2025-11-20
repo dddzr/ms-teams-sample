@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teams 인증 콜백</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .message {
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        .error {
+            color: #c33;
+            background: #fee;
+            border: 1px solid #fcc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="statusMessage">
+            <div class="spinner"></div>
+            <p class="message">인증 처리 중...</p>
+        </div>
+        <div th:if="${success}" id="successContainer" style="display: none;">
+            <div class="spinner"></div>
+            <p class="message">인증 성공! Teams로 돌아가는 중...</p>
+        </div>
+        <div th:if="${error}" id="errorContainer" class="error" style="display: none;">
+            <p th:text="${error}">인증 실패</p>
+        </div>
+    </div>
+    
+    <!-- Microsoft Teams JavaScript SDK -->
+    <script src="https://res.cdn.office.net/teams-js/2.0.0/js/MicrosoftTeams.min.js" crossorigin="anonymous"></script>
+    
+    <!-- 알림 모듈 (Teams Dialog / Browser Alert) -->
+    <!-- 주의: 이 페이지는 Teams 인증 팝업 내부에서 실행되므로 showError() 사용 시 무한 로딩 발생 가능 -->
+    <!-- SDK 초기화 실패 시에만 사용 (일반 브라우저로 fallback) -->
+    <script src="/js/common/teams-init.js"></script>
+    <script src="/js/common/notification.js"></script>
+    
+    <script th:inline="javascript">
+        // 서버에서 전달된 값 (Thymeleaf)
+        const success = /*[[${success}]]*/ false;
+        const error = /*[[${error}]]*/ null;
+        
+        // 디버깅용 로그
+        console.log('Teams 콜백 페이지 로드:', { success, error });
+        
+        // URL 파라미터에서 code 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasCode = urlParams.has('code');
+        const hasError = urlParams.has('error');
+        
+        // Teams SDK가 로드될 때까지 대기
+        function waitForTeamsSDK() {
+            if (typeof microsoftTeams !== 'undefined') {
+                handleCallback();
+            } else {
+                // SDK가 아직 로드되지 않았으면 잠시 후 다시 시도
+                setTimeout(waitForTeamsSDK, 100);
+            }
+        }
+        
+        function handleCallback() {
+            let initPromise;
+            // 중복 초기화 방지
+            if (typeof microsoftTeams.app.isInitialized === 'function' && microsoftTeams.app.isInitialized()) {
+                initPromise = Promise.resolve();
+            } else {
+                initPromise = microsoftTeams.app.initialize();
+            }
+            
+            initPromise.then(() => {
+                // 서버에서 명시적으로 success가 true이고 error가 없을 때만 성공으로 처리
+                // URL의 code만으로는 판단하지 않음 (서버 처리 결과를 우선)
+                if (success === true && !error) {
+                    // 인증 성공 - Teams에 성공 알림
+                    console.log('인증 성공 - Teams에 알림');
+                    microsoftTeams.authentication.notifySuccess('success');
+                } else if (error || hasError) {
+                    // 인증 실패 - Teams에 실패 알림
+                    // 주의: 이 페이지는 Teams 인증 팝업 내부에서 실행되므로
+                    // showError()를 호출하면 또 다른 다이얼로그가 열리려고 시도하여 무한 로딩 발생
+                    // notifyFailure()만 호출하면 팝업이 닫히고 부모 페이지의 failureCallback에서 showError() 호출됨
+                    const errorMsg = error || urlParams.get('error_description') || '인증 실패';
+                    console.error('인증 실패:', errorMsg);
+                    microsoftTeams.authentication.notifyFailure(errorMsg);
+                } else {
+                    // 예상치 못한 상황 (success도 false이고 error도 없음)
+                    const errorMsg = '인증 처리 중 오류가 발생했습니다.';
+                    console.error('예상치 못한 상황:', { success, error, hasCode, hasError });
+                    microsoftTeams.authentication.notifyFailure(errorMsg);
+                }
+            }).catch((err) => {
+                // Teams SDK 초기화 실패 - 일반 브라우저로 처리
+                console.error('Teams SDK 초기화 실패:', err);
+                if (success === true && !error) {
+                    window.location.href = '/home';
+                } else {
+                    // SDK 초기화 실패 시에는 일반 브라우저로 처리되므로 showError() 사용 가능
+                    const errorMsg = error || '알 수 없는 오류';
+                    showError(errorMsg, '인증 실패');
+                    window.location.href = '/';
+                }
+            });
+        }
+        
+        // 페이지 로드 시 Teams SDK 대기
+        waitForTeamsSDK();
+    </script>
+</body>
+</html>
+

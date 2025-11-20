@@ -64,15 +64,9 @@ public class User {
     private LoginType loginType = LoginType.APP;
     
     /**
-     * OAuth Access Token (세션 대신 DB에 저장하려는 경우)
-     * JWT 토큰은 최대 8000자까지 가능하므로 TEXT 타입 사용
-     */
-    @Column(columnDefinition = "TEXT")
-    private String accessToken;
-    
-    /**
      * OAuth Refresh Token
-     * Refresh Token도 충분한 길이를 위해 TEXT 타입 사용
+     * Refresh Token은 장기간 유효하므로 DB에 저장
+     * 충분한 길이를 위해 TEXT 타입 사용
      */
     @Column(columnDefinition = "TEXT")
     private String refreshToken;

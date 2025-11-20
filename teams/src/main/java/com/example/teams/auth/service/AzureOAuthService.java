@@ -23,22 +23,51 @@ public class AzureOAuthService {
     private final OkHttpClient httpClient = new OkHttpClient();
     
     /**
-     * Authorization Code로 Access Token 교환
+     * Authorization Code로 Access Token 교환 (MS 단독 로그인용)
      * @return [accessToken, refreshToken] 배열 (refreshToken이 없으면 null)
      */
     public String[] getAccessToken(String code) {
+        return getAccessToken(code, false);
+    }
+    
+    /**
+     * Authorization Code로 Access Token 교환
+     * @param code Authorization code
+     * @param useOAuthConfig true면 azure.oauth.* 설정 사용, false면 azure.* 설정 사용
+     * @return [accessToken, refreshToken] 배열 (refreshToken이 없으면 null)
+     */
+    public String[] getAccessToken(String code, boolean useOAuthConfig) {
         try {
+            String clientId, clientSecret, redirectUri, scope, tokenUrl;
+            
+            if (useOAuthConfig) {
+                // OAuth 2.0 설정 사용 (azure.oauth.*)
+                var oauth = azureOAuthConfig.getOauth();
+                clientId = oauth.getClientId();
+                clientSecret = oauth.getClientSecret();
+                redirectUri = oauth.getRedirectUri();
+                scope = oauth.getScope();
+                tokenUrl = azureOAuthConfig.getOAuthTokenUrl();
+            } else {
+                // MS 단독 로그인 설정 사용 (azure.*)
+                clientId = azureOAuthConfig.getClientId();
+                clientSecret = azureOAuthConfig.getClientSecret();
+                redirectUri = azureOAuthConfig.getRedirectUri();
+                scope = azureOAuthConfig.getScope();
+                tokenUrl = azureOAuthConfig.getTokenUrl();
+            }
+            
             RequestBody formBody = new FormBody.Builder()
-                .add("client_id", azureOAuthConfig.getClientId())
-                .add("client_secret", azureOAuthConfig.getClientSecret())
+                .add("client_id", clientId)
+                .add("client_secret", clientSecret)
                 .add("code", code)
-                .add("redirect_uri", azureOAuthConfig.getRedirectUri())
+                .add("redirect_uri", redirectUri)
                 .add("grant_type", "authorization_code")
-                .add("scope", azureOAuthConfig.getScope())
+                .add("scope", scope)
                 .build();
             
             Request request = new Request.Builder()
-                .url(azureOAuthConfig.getTokenUrl())
+                .url(tokenUrl)
                 .post(formBody)
                 .build();
             
@@ -55,8 +84,8 @@ public class AzureOAuthService {
                 
                 // 토큰 응답에서 scope 확인 (디버깅용)
                 if (json.has("scope")) {
-                    String scope = json.getString("scope");
-                    log.info("토큰에 포함된 scope: {}", scope);
+                    String responseScope = json.getString("scope");
+                    log.info("토큰에 포함된 scope: {}", responseScope);
                 } else {
                     log.warn("토큰 응답에 scope 정보가 없습니다");
                 }
@@ -95,6 +124,13 @@ public class AzureOAuthService {
     public String getAuthorizationUrl() {
         return azureOAuthConfig.getAuthorizationUrl();
     }
+    
+    /**
+     * Teams SDK용 Authorization URL 생성 (response_mode=query)
+     */
+    public String getAuthorizationUrlForTeams() {
+        return azureOAuthConfig.getAuthorizationUrlForTeams();
+    }
 
     /**
      * 추가 파라미터(prompt, login_hint)를 포함한 Authorization URL 생성
@@ -116,6 +152,20 @@ public class AzureOAuthService {
             throw new RuntimeException("Authorization URL 생성 실패", e);
         }
         return sb.toString();
+    }
+    
+    /**
+     * OAuth 2.0 (MS가 IdP → 내 앱 로그인 연동)용 Authorization URL 생성
+     */
+    public String getOAuthAuthorizationUrl() {
+        return azureOAuthConfig.getOAuthAuthorizationUrl();
+    }
+    
+    /**
+     * OAuth 2.0 (MS가 IdP → 내 앱 로그인 연동)용 Teams SDK Authorization URL 생성
+     */
+    public String getOAuthAuthorizationUrlForTeams() {
+        return azureOAuthConfig.getOAuthAuthorizationUrlForTeams();
     }
 }
 
