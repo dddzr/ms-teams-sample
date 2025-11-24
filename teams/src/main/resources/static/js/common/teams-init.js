@@ -18,72 +18,24 @@
 // 내부 변수 (외부에서는 isTeams(), isTeamsReady() 함수로 접근)
 let isTeamsContext = false;
 let teamsInitialized = false;
-let sdkLoading = false;
-let sdkLoadPromise = null;
-
-/**
- * Teams SDK 동적 로드
- * @returns {Promise<void>} SDK 로드 완료 Promise
- */
-function loadTeamsSDK() {
-    // 이미 로드되어 있으면 즉시 반환
-    if (typeof microsoftTeams !== 'undefined') {
-        return Promise.resolve();
-    }
-    
-    // 이미 로딩 중이면 기존 Promise 반환
-    if (sdkLoading && sdkLoadPromise) {
-        return sdkLoadPromise;
-    }
-    
-    // SDK 로드 시작
-    sdkLoading = true;
-    sdkLoadPromise = new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://res.cdn.office.net/teams-js/2.0.0/js/MicrosoftTeams.min.js';
-        script.crossOrigin = 'anonymous';
-        script.onload = () => {
-            sdkLoading = false;
-            resolve();
-        };
-        script.onerror = () => {
-            sdkLoading = false;
-            sdkLoadPromise = null;
-            reject(new Error('Teams SDK 로드 실패'));
-        };
-        document.head.appendChild(script);
-    });
-    
-    return sdkLoadPromise;
-}
 
 /**
  * Teams 환경 초기화
  * @returns {Promise<boolean>} Teams 환경 여부
  */
-async function initTeams() {
+function initTeams() {
     // 이미 초기화 완료되었으면 즉시 반환
     if (teamsInitialized) {
         return Promise.resolve(isTeamsContext);
     }
     
-    try {
-        // Teams SDK 동적 로드
-        await loadTeamsSDK();
-    } catch (error) {
-        // SDK 로드 실패 (일반 브라우저일 수 있음)
-        isTeamsContext = false;
-        teamsInitialized = true;
-        console.log('Teams SDK를 로드할 수 없습니다. 일반 브라우저에서 실행 중입니다.');
-        return false;
-    }
-    
-    // SDK가 로드되었지만 여전히 undefined인 경우 (일반 브라우저)
+    // SDK가 로드되지 않았으면 일반 브라우저로 처리
+    // SDK는 index.html에서 직접 로드됨
     if (typeof microsoftTeams === 'undefined') {
         isTeamsContext = false;
         teamsInitialized = true;
         console.log('Teams 환경이 아닙니다. 일반 브라우저에서 실행 중입니다.');
-        return false;
+        return Promise.resolve(false);
     }
     
     return new Promise((resolve) => {
@@ -132,63 +84,34 @@ async function tryTeamsSSO(callback = null) {
         
         // 1. Teams에 로그인된 사용자의 토큰(SSO Token) 가져오기
         // SSO를 위해 앱의 App ID URI를 사용 (manifest.json의 webApplicationInfo.resource와 일치해야 함)
-        // 도메인 검증 없이 사용: api://<client-id> 형식
         let ssoToken = null;
         try {
             if (typeof showLoading === 'function') {
                 showLoading('SSO 토큰 요청 중...');
             }
             
-            const SSO_TIMEOUT_MS = 5000; // 3초
-            // v2 SDK는 콜백 기반이므로 Promise로 래핑
-            ssoToken = await new Promise((resolve, reject) => {
-                let timeoutTriggered = false;
-                let callbackInvoked = false;
-                
-                // Timeout 설정
-                const timeoutId = setTimeout(() => {
-                    if (!callbackInvoked) {
-                        timeoutTriggered = true;
-                        callbackInvoked = true;
-                        // 타임아웃 발생 시 로딩 메시지 업데이트
-                        if (typeof showLoading === 'function') {
-                            showLoading('SSO 토큰 요청 시간 초과');
-                        }
-                        reject(new Error('SSO 토큰 요청 시간 초과 (5초)'));
+            const SSO_TIMEOUT_MS = 5000; // 5초
+            // Promise 기반으로 토큰 요청 (타임아웃 포함)
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    if (typeof showLoading === 'function') {
+                        showLoading('SSO 토큰 요청 시간 초과');
                     }
+                    reject(new Error('SSO 토큰 요청 시간 초과 (5초)'));
                 }, SSO_TIMEOUT_MS);
-                
-                // getAuthToken 호출 (콜백 기반)
-                try {
-                    microsoftTeams.authentication.getAuthToken({
-                        // resources: ['api://nwnote.saerom.co.kr/56e05b4e-9682-4e5f-8866-5ba5d76e1cbf'],
-                        // 도메인 검증 없이 사용 가능한 형식: api://auth-<tenant-id>/<client-id>
-                        resources: ['api://auth-844894c4-de5c-4041-9eed-f9fa243a7d17/56e05b4e-9682-4e5f-8866-5ba5d76e1cbf'],
-                        silent: true,
-                        successCallback: (token) => {
-                            if (!callbackInvoked && !timeoutTriggered) {
-                                callbackInvoked = true;
-                                clearTimeout(timeoutId);
-                                resolve(token);
-                            }
-                        },
-                        failureCallback: (error) => {
-                            if (!callbackInvoked && !timeoutTriggered) {
-                                callbackInvoked = true;
-                                clearTimeout(timeoutId);
-                                reject(error);
-                            }
-                        }
-                    });
-                } catch (sdkError) {
-                    // getAuthToken 호출 자체가 실패한 경우
-                    if (!callbackInvoked && !timeoutTriggered) {
-                        callbackInvoked = true;
-                        clearTimeout(timeoutId);
-                        reject(sdkError);
-                    }
-                }
             });
+            
+            // getAuthToken 호출 (Promise 기반)
+            const authPromise = microsoftTeams.authentication.getAuthToken({
+                // 1. (X) resources: ['api://{domain}/{client-id}'],
+                // 2. (X) resources: ['api://auth-<tenant-id>/<client-id>'] //도메인 검증 없이 사용 가능한 형식
+                // 3. (O) resources: ['https://{domain}:{port}/{client-id}'], //https로 해야함.
+                // 4. (O) resources 파라미터 생략 - manifest.json의 webApplicationInfo.resource를 기본으로 사용
+                // 참고: resources: [] (빈 배열)은 리소스를 요청하지 않는 것으로 해석되어 실패할 수 있음
+                // silent: true,
+            });
+            
+            ssoToken = await Promise.race([authPromise, timeoutPromise]);
             
         } catch (error) {
             // 에러 메시지 추출 (더 상세하게)
@@ -234,7 +157,7 @@ async function tryTeamsSSO(callback = null) {
             return;
         }
 
-        // 2. Graph API 토큰 요청
+        // 2. Graph API 토큰 요청 - TODO: 여기서 말고 서버로 ssoToken 전송해서 OBO방식으로 Graph Client 초기화
         let graphToken = null;
         try {
             if (typeof showLoading === 'function') {
@@ -242,26 +165,20 @@ async function tryTeamsSSO(callback = null) {
             }
             
             const GRAPH_TIMEOUT_MS = 5000;
-            graphToken = await new Promise((resolve, reject) => {
-                // Timeout 설정
-                const timeoutId = setTimeout(() => {
+            // Promise 기반으로 토큰 요청 (타임아웃 포함)
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
                     reject(new Error('Graph API 토큰 요청 시간 초과 (5초)'));
                 }, GRAPH_TIMEOUT_MS);
-                
-                // getAuthToken 호출 (콜백 기반)
-                microsoftTeams.authentication.getAuthToken({
-                    resources: ['https://graph.microsoft.com/.default'],
-                    silent: true,
-                    successCallback: (token) => {
-                        clearTimeout(timeoutId);
-                        resolve(token);
-                    },
-                    failureCallback: (error) => {
-                        clearTimeout(timeoutId);
-                        reject(error);
-                    }
-                });
             });
+            
+            // getAuthToken 호출 (Promise 기반)
+            const authPromise = microsoftTeams.authentication.getAuthToken({
+                resources: ['https://graph.microsoft.com/.default'],
+                silent: true,
+            });
+            
+            graphToken = await Promise.race([authPromise, timeoutPromise]);
         } catch (graphError) {
             if (typeof hideLoading === 'function') {
                 hideLoading();
@@ -438,13 +355,20 @@ function isTeamsReady() {
 }
 
 // 자동 초기화 - JS 로드 시 자동으로 initTeams 실행
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initTeams();
-    });
-} else {
-    initTeams();
-}
+// async 함수이므로 await 없이 호출해도 Promise가 반환됨
+(function autoInit() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initTeams().catch(err => {
+                console.error('Teams 자동 초기화 실패:', err);
+            });
+        });
+    } else {
+        initTeams().catch(err => {
+            console.error('Teams 자동 초기화 실패:', err);
+        });
+    }
+})();
 
 // 전역 함수로 노출 (다른 스크립트에서 사용 가능)
 window.initTeams = initTeams;

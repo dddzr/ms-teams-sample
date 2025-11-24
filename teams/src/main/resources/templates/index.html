@@ -577,7 +577,10 @@
     <!-- 로딩 오버레이 모듈 -->
     <script src="/js/common/loading.js"></script>
     
-    <!-- Teams 초기화 모듈 (SDK 자동 로드 포함) -->
+    <!-- Microsoft Teams JavaScript SDK (먼저 로드) -->
+    <script src="https://res.cdn.office.net/teams-js/2.0.0/js/MicrosoftTeams.min.js" crossorigin="anonymous"></script>
+    
+    <!-- Teams 초기화 모듈 (SDK 로드 후 실행) -->
     <script src="/js/common/teams-init.js"></script>
     
     <!-- 알림 모듈 (Teams Dialog / Browser Alert) -->
@@ -586,41 +589,6 @@
     <script>
         let portalLoggedIn = false;
         let msLoggedIn = false;
-        
-        // Teams 환경에서 MS 로그인 처리
-        function handleMsLoginInTeams(loginUrl) {
-            // isTeams() 함수로 확인 (teams-init.js 모듈 사용)
-            if (typeof isTeams !== 'function' || !isTeams()) {
-                // Teams 환경이 아니면 일반 브라우저 방식 사용
-                console.log('Teams 환경이 아니므로 일반 브라우저 방식으로 리다이렉트');
-                window.location.href = loginUrl;
-                return;
-            }
-            
-            console.log('Teams 환경에서 로그인 팝업 열기:', loginUrl);
-            
-            // Teams SDK의 authenticate() 메서드 사용
-            // 인증 URL에 콜백 URL이 포함되어 있어야 함
-            microsoftTeams.authentication.authenticate({
-                url: loginUrl,
-                width: 600,
-                height: 535,
-                successCallback: function(result) {
-                    // result는 콜백 페이지에서 notifySuccess()로 전달된 값
-                    // 보통은 빈 문자열이거나 undefined
-                    showSuccess('인증 성공! 페이지를 새로고침합니다.');
-                    // 세션 쿠키가 전달될 시간을 주기 위해 약간의 지연 후 새로고침
-                    setTimeout(async () => {
-                        await checkLoginStatus(true);
-                        window.location.reload();
-                    }, 500);
-                },
-                failureCallback: function(reason) {
-                    showError('인증 실패: ' + reason);
-                    console.error('인증 실패:', reason);
-                }
-            });
-        }
         
         // 포털 로그인 상태 확인
         async function checkPortalLogin() {
@@ -699,7 +667,7 @@
         }
         
         // SSO 에러 메시지 표시
-        function showSSOError(message) {
+        function showErrorMsg(message) {
             const errorDiv = document.getElementById('ssoErrorMessage');
             if (errorDiv) {
                 errorDiv.textContent = message;
@@ -712,7 +680,7 @@
         }
         
         // SSO 에러 메시지 숨김
-        function hideSSOError() {
+        function hideErrorMsg() {
             const errorDiv = document.getElementById('ssoErrorMessage');
             if (errorDiv) {
                 errorDiv.style.display = 'none';
@@ -748,7 +716,7 @@
                 } else if (portalResult) {
                     showInfo('포털 로그인: 성공\nMS 로그인: 안 됨');
                 } else {
-                    showError('로그인 상태: 모두 안 됨');
+                    showErrorHtml('로그인 상태: 모두 안 됨');
                 }
             }
             
@@ -766,7 +734,7 @@
                 showSuccess(successEl.textContent.trim());
             }
             if (errorEl && errorEl.textContent.trim()) {
-                showError(errorEl.textContent.trim());
+                showErrorHtml(errorEl.textContent.trim());
             }
         }
         
@@ -792,7 +760,7 @@
                                 tryTeamsSSO(async (result) => {
                                     console.log('SSO 결과:', result); // 디버깅용
                                     if (result.success) {
-                                        hideSSOError();
+                                        hideErrorMsg();
                                         // 로그인 상태 확인 및 업데이트
                                         await checkLoginStatus();
                                     } else {
@@ -812,7 +780,7 @@
                                         const errorCode = result.errorCode && result.errorCode !== 'N/A' ? ` (코드: ${result.errorCode})` : '';
                                         const errorDetails = result.errorDetails ? `\n${result.errorDetails}` : '';
                                         
-                                        showSSOError(`SSO 오류: ${errorMsg}${errorCode}${errorDetails}`);
+                                        showErrorMsg(`SSO 오류: ${errorMsg}${errorCode}${errorDetails}`);
                                     }
                                 });
                             }
@@ -831,10 +799,10 @@
             if (ssoBtn) {
                 ssoBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
-                    hideSSOError();
+                    hideErrorMsg();
                     
                     if (typeof isTeams !== 'function' || !isTeams()) {
-                        showSSOError('Teams 환경이 아니거나 초기화되지 않았습니다.');
+                        showErrorMsg('Teams 환경이 아니거나 초기화되지 않았습니다.');
                         return;
                     }
                     
@@ -842,7 +810,7 @@
                         tryTeamsSSO(async (result) => {
                             console.log('SSO 결과:', result); // 디버깅용
                             if (result.success) {
-                                hideSSOError();
+                                hideErrorMsg();
                                 // 로그인 상태 확인 및 업데이트
                                 await checkLoginStatus();
                             } else {
@@ -862,11 +830,11 @@
                                 const errorCode = result.errorCode && result.errorCode !== 'N/A' ? ` (코드: ${result.errorCode})` : '';
                                 const errorDetails = result.errorDetails ? `\n${result.errorDetails}` : '';
                                 
-                                showSSOError(`SSO 오류: ${errorMsg}${errorCode}${errorDetails}`);
+                                showErrorMsg(`SSO 오류: ${errorMsg}${errorCode}${errorDetails}`);
                             }
                         });
                     } else {
-                        showSSOError('SSO 함수를 사용할 수 없습니다.');
+                        showErrorMsg('SSO 함수를 사용할 수 없습니다.');
                     }
                 });
             }
@@ -914,6 +882,114 @@
             }
 
         });
+
+        
+        /**
+         * Teams 환경에서 MS 로그인 팝업 열기
+         * 
+         * 이 함수는 Teams SDK의 authentication.authenticate() 메서드를 사용하여
+         * 로그인 팝업을 엽니다.
+         * 
+         * @param {string} loginUrl - 로그인 URL (콜백 URL 포함)
+         * 
+         * 주의: 이 함수는 호출 전에 이미 isTeams() 체크가 완료된 상태에서만 호출됩니다.
+         * 따라서 함수 내부에서는 Teams 환경 체크를 하지 않습니다.
+         */
+         /**
+          * Teams 환경에서 MS 로그인 팝업 열기
+          * 
+          * @param {string} loginUrl - 로그인 URL (절대 URL이어야 함, manifest.json의 validDomains에 포함되어야 함)
+          */
+         function handleMsLoginInTeams(loginUrl) {
+            console.log('[handleMsLoginInTeams] 함수 호출됨, URL:', loginUrl);
+            
+            // 기본 검증만 수행 (null/undefined 체크)
+            if (!loginUrl) {
+                const errorMsg = '로그인 URL이 제공되지 않았습니다.';
+                console.error('[handleMsLoginInTeams]', errorMsg);
+                showErrorMsg(errorMsg);
+                return;
+            }
+            
+            // Teams SDK 존재 확인
+            if (typeof microsoftTeams === 'undefined') {
+                const errorMsg = 'Teams SDK가 로드되지 않았습니다.';
+                console.error('[handleMsLoginInTeams]', errorMsg);
+                showErrorMsg(errorMsg);
+                return;
+            }
+            
+            // authentication API 존재 확인
+            if (typeof microsoftTeams.authentication === 'undefined') {
+                const errorMsg = 'Teams authentication API를 사용할 수 없습니다.';
+                console.error('[handleMsLoginInTeams]', errorMsg);
+                showErrorMsg(errorMsg);
+                return;
+            }
+            
+            if (typeof microsoftTeams.authentication.authenticate !== 'function') {
+                const errorMsg = 'Teams authenticate 함수를 사용할 수 없습니다.';
+                console.error('[handleMsLoginInTeams]', errorMsg);
+                showErrorMsg(errorMsg);
+                return;
+            }
+            
+            // Teams SDK의 authenticate() 메서드로 팝업 열기
+            // 인증 URL에 콜백 URL이 포함되어 있어야 함
+            // 주의: URL은 manifest.json의 validDomains에 포함되어야 함
+            console.log('[handleMsLoginInTeams] authenticate() 호출 시작, URL:', loginUrl);
+            try {
+                microsoftTeams.authentication.authenticate({
+                    url: loginUrl,        // 로그인 URL (절대 URL, validDomains에 포함되어야 함)
+                    width: 600,          // 팝업 너비
+                    height: 535,         // 팝업 높이
+                    successCallback: function(result) {
+                        // 인증 성공 시 콜백
+                        // result는 콜백 페이지에서 notifySuccess()로 전달된 값
+                        console.log('[handleMsLoginInTeams] 인증 성공:', result);
+                        hideErrorMsg();
+                        if (typeof showSuccess === 'function') {
+                            showSuccess('인증 성공! 페이지를 새로고침합니다.');
+                        }
+                        // 세션 쿠키가 전달될 시간을 주기 위해 약간의 지연 후 새로고침
+                        setTimeout(async () => {
+                            await checkLoginStatus(true);
+                            window.location.reload();
+                        }, 500);
+                    },
+                    failureCallback: function(reason) {
+                        // 인증 실패 시 콜백
+                        console.error('[handleMsLoginInTeams] 인증 실패, reason:', reason);
+                        
+                        let errorMsg = '인증 실패: ';
+                        if (typeof reason === 'string') {
+                            errorMsg += reason;
+                        } else if (reason && reason.message) {
+                            errorMsg += reason.message;
+                        } else {
+                            errorMsg += (reason || '알 수 없는 오류');
+                        }
+                        
+                        // "Auth url is not valid" 오류에 대한 추가 안내
+                        if (errorMsg.includes('Auth url is not valid') || errorMsg.includes('not valid')) {
+                            errorMsg += '\n\n가능한 원인:\n';
+                            errorMsg += '1. manifest.json의 validDomains에 URL 도메인이 포함되지 않았습니다.\n';
+                            errorMsg += '2. URL이 절대 URL이 아닙니다 (상대 경로는 사용할 수 없습니다).\n';
+                            errorMsg += `\n사용된 URL: ${loginUrl}`;
+                        }
+                        
+                        console.error('[handleMsLoginInTeams]', errorMsg);
+                        showErrorMsg(errorMsg);
+                    }
+                });
+                console.log('[handleMsLoginInTeams] authenticate() 호출 완료');
+            } catch (error) {
+                // authenticate() 호출 중 오류 발생
+                const errorMsg = '로그인 팝업 열기 실패: ' + (error.message || error || '알 수 없는 오류');
+                console.error('[handleMsLoginInTeams]', errorMsg, error);
+                showErrorMsg(errorMsg);
+            }
+        }
     </script>
     
 </body>
