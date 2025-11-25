@@ -7,7 +7,6 @@ import com.example.teams.shared.util.AuthUtil;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,7 +15,7 @@ import java.util.List;
  * Microsoft Teams 관련 API 컨트롤러
  * Teams, Channels, Channel Messages만 처리합니다.
  */
-@Controller
+@RestController
 @RequiredArgsConstructor
 @Slf4j
 @RequestMapping("/api")

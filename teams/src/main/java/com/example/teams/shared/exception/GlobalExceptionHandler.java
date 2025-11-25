@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.teams.ms.exception.GraphApiException;
 
@@ -30,7 +31,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<Map<String, Object>> handleUnauthorizedException(UnauthorizedException e) {
-        log.error("인증 실패: {}", e.getMessage());
+        log.info("인증 실패: {}", e.getMessage());
         
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("timestamp", LocalDateTime.now());
@@ -101,6 +102,30 @@ public class GlobalExceptionHandler {
         errorResponse.put("path", "/api");
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+    
+    /**
+     * ResponseStatusException 처리
+     * (예: 404 NOT_FOUND "앱 로그인이 필요합니다.")
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(ResponseStatusException e) {
+        HttpStatus status = e.getStatusCode() instanceof HttpStatus ? (HttpStatus) e.getStatusCode() : HttpStatus.INTERNAL_SERVER_ERROR;
+        
+        if (status.is4xxClientError()) {
+            log.info("요청 처리 중 상태 예외 발생: {} {}", status.value(), e.getReason());
+        } else {
+            log.error("요청 처리 중 상태 예외 발생: {} {}", status.value(), e.getReason(), e);
+        }
+        
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("timestamp", LocalDateTime.now());
+        errorResponse.put("status", status.value());
+        errorResponse.put("error", status.getReasonPhrase());
+        errorResponse.put("message", e.getReason());
+        errorResponse.put("path", "/api");
+        
+        return ResponseEntity.status(status).body(errorResponse);
     }
     
     /**

@@ -90,17 +90,6 @@ async function tryTeamsSSO(callback = null) {
                 showLoading('SSO 토큰 요청 중...');
             }
             
-            const SSO_TIMEOUT_MS = 5000; // 5초
-            // Promise 기반으로 토큰 요청 (타임아웃 포함)
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
-                    if (typeof showLoading === 'function') {
-                        showLoading('SSO 토큰 요청 시간 초과');
-                    }
-                    reject(new Error('SSO 토큰 요청 시간 초과 (5초)'));
-                }, SSO_TIMEOUT_MS);
-            });
-            
             // getAuthToken 호출 (Promise 기반)
             const authPromise = microsoftTeams.authentication.getAuthToken({
                 // 1. (X) resources: ['api://{domain}/{client-id}'],
@@ -111,7 +100,7 @@ async function tryTeamsSSO(callback = null) {
                 // silent: true,
             });
             
-            ssoToken = await Promise.race([authPromise, timeoutPromise]);
+            ssoToken = await authPromise;
             
         } catch (error) {
             // 에러 메시지 추출 (더 상세하게)
@@ -176,9 +165,8 @@ async function tryTeamsSSO(callback = null) {
         if (response.ok) {
             const result = await response.json();
             
-            // 로그인 상태 확인 (checkLoginStatus가 있으면 사용)
-            if (typeof checkLoginStatus === 'function') {
-                await checkLoginStatus();
+            if (typeof hideLoading === 'function') {
+                hideLoading();
             }
             
             // 콜백 호출
@@ -186,10 +174,6 @@ async function tryTeamsSSO(callback = null) {
                 callback({ success: true, result });
             }
             
-            // 페이지 새로고침 (서버에서 성공 메시지 표시)
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
         } else {
             let errorData = null;
             let errorMessage = '알 수 없는 오류';
