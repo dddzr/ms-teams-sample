@@ -36,6 +36,14 @@ public interface GraphClientPort {
     void initializeGraphClient(String accessToken);
     
     /**
+     * Teams SSO 토큰으로 Graph Client 초기화 (OBO)
+     * On-Behalf-Of 플로우를 통해 Graph API 토큰을 교환/갱신합니다.
+     * 
+     * @param ssoToken Teams에서 전달된 SSO 토큰 (App ID URI 대상)
+     */
+    void initializeGraphClientWithSSO(String ssoToken);
+    
+    /**
      * Graph Client 초기화 상태 초기화 (테스트용 또는 로그아웃 시)
      */
     void reset();

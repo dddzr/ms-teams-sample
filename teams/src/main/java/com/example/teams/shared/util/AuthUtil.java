@@ -51,6 +51,16 @@ public class AuthUtil {
         Long userId = (Long) session.getAttribute("userId");
         String accessToken = (String) session.getAttribute("accessToken");
         String loginType = (String) session.getAttribute("loginType");
+        String ssoToken = (String) session.getAttribute("ssoToken");
+        
+        // Teams SSO 전용 로그인 (OBO)
+        if ("SSO".equalsIgnoreCase(loginType)) {
+            if (ssoToken == null || ssoToken.isEmpty()) {
+                throw new UnauthorizedException("SSO 토큰이 없습니다. 다시 로그인해주세요.");
+            }
+            graphClientPort.initializeGraphClientWithSSO(ssoToken);
+            return;
+        }
         
         // MS 단독 로그인: Access Token만으로 인증
         if (userId == null && accessToken != null) {

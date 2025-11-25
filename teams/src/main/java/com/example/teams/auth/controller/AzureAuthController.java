@@ -239,16 +239,20 @@ public class AzureAuthController {
             log.info("Teams SSO 토큰 검증 성공 - user: {}, name: {}, tenant: {}", 
                 userPrincipalName, userName, tenantId);
             
-            // OBO 방식으로 Graph API 토큰 교환
-            String graphToken = null;
+            // OBO 방식으로 Graph Client 초기화 (OnBehalfOfCredential 사용)
             User user = null;
             try {
-                log.info("OBO 방식으로 Graph API 토큰 교환 시작...");
-                graphToken = azureOAuthService.exchangeTokenForGraph(ssoToken);
-                log.info("OBO 토큰 교환 성공 - Graph API 토큰 획득");
+                log.info("OBO 방식으로 Graph Client 초기화 시작 (OnBehalfOfCredential 사용)...");
                 
-                // Graph Client 초기화
-                graphClientPort.initializeGraphClient(graphToken);
+                // Graph Client 초기화 (SSO 토큰으로 직접 초기화 - 자동 토큰 교환 및 갱신)
+                if (graphClientPort instanceof com.example.teams.ms.service.GraphClientService) {
+                    ((com.example.teams.ms.service.GraphClientService) graphClientPort)
+                        .initializeGraphClientWithSSO(ssoToken);
+                } else {
+                    // 폴백: 기존 방식 사용 (토큰 교환 후 초기화)
+                    String graphToken = azureOAuthService.exchangeTokenForGraph(ssoToken);
+                    graphClientPort.initializeGraphClient(graphToken);
+                }
                 
                 // Microsoft Graph API로 사용자 정보 가져오기
                 GraphServiceClient graphClient = graphClientPort.getGraphClient();
@@ -296,17 +300,27 @@ public class AzureAuthController {
                 }
                 
             } catch (Exception e) {
-                log.error("OBO 토큰 교환 또는 Graph API 처리 실패", e);
+                log.error("OBO Graph Client 초기화 또는 Graph API 처리 실패", e);
+                
+                // Invalid audience 등 오류 발생 시 Graph Client 상태를 초기화하여 다음 시도에 영향이 없도록 함
+                try {
+                    graphClientPort.reset();
+                    log.info("Graph Client 초기화 상태를 리셋했습니다 (오류 발생)");
+                } catch (Exception resetError) {
+                    log.warn("Graph Client 리셋 중 오류 발생: {}", resetError.getMessage());
+                }
+                
                 // OBO 실패해도 SSO 토큰은 저장하여 기본 인증은 가능
             }
             
-            // Graph API 토큰을 세션에 저장 (OBO로 교환된 토큰)
-            session.setAttribute("accessToken", graphToken != null ? graphToken : ssoToken);
+            // SSO 토큰을 세션에 저장 (OBO 방식에서는 SSO 토큰만 저장)
+            session.setAttribute("accessToken", ssoToken);
             session.setAttribute("ssoToken", ssoToken); // SSO 토큰임을 표시
             session.setAttribute("userPrincipalName", userPrincipalName);
             session.setAttribute("userName", userName);
             session.setAttribute("microsoftUserId", microsoftUserId);
             session.setAttribute("tenantId", tenantId);
+            session.setAttribute("loginType", "SSO"); // 앱 로그인 없이도 SSO 사용자로 인식
             
             // 사용자 연동이 성공한 경우
             if (user != null) {

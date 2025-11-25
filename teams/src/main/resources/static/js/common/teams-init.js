@@ -161,7 +161,7 @@ async function tryTeamsSSO(callback = null) {
         // OBO (On-Behalf-Of) 방식: 클라이언트는 SSO 토큰만 전송하고, 서버에서 Graph API 토큰으로 교환
         // 이렇게 하면 Graph API 토큰이 클라이언트에 노출되지 않아 보안이 강화됩니다.
         if (typeof showLoading === 'function') {
-            showLoading('서버로 SSO 토큰 전송 중 (OBO 방식으로 Graph API 토큰 교환)...');
+            showLoading('SSO 로그인 중...');
         }
         const response = await fetch('/auth/teams/sso', {
             method: 'POST',
