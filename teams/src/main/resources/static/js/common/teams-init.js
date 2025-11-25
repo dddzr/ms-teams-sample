@@ -157,38 +157,11 @@ async function tryTeamsSSO(callback = null) {
             return;
         }
 
-        // 2. Graph API 토큰 요청 - TODO: 여기서 말고 서버로 ssoToken 전송해서 OBO방식으로 Graph Client 초기화
-        let graphToken = null;
-        try {
-            if (typeof showLoading === 'function') {
-                showLoading('Graph API 토큰 요청 중...');
-            }
-            
-            const GRAPH_TIMEOUT_MS = 5000;
-            // Promise 기반으로 토큰 요청 (타임아웃 포함)
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
-                    reject(new Error('Graph API 토큰 요청 시간 초과 (5초)'));
-                }, GRAPH_TIMEOUT_MS);
-            });
-            
-            // getAuthToken 호출 (Promise 기반)
-            const authPromise = microsoftTeams.authentication.getAuthToken({
-                resources: ['https://graph.microsoft.com/.default'],
-                silent: true,
-            });
-            
-            graphToken = await Promise.race([authPromise, timeoutPromise]);
-        } catch (graphError) {
-            if (typeof hideLoading === 'function') {
-                hideLoading();
-            }
-            console.warn('Graph API 토큰 획득 실패(' + graphError.errorCode + '): ' + graphError.message);
-        }
-        
-        // 3. 서버로 SSO 토큰과 Graph API 토큰 전송하여 세션에 저장 및 로그인 연동
+        // 2. 서버로 SSO 토큰 전송하여 OBO 방식으로 Graph API 토큰 교환 및 로그인 연동
+        // OBO (On-Behalf-Of) 방식: 클라이언트는 SSO 토큰만 전송하고, 서버에서 Graph API 토큰으로 교환
+        // 이렇게 하면 Graph API 토큰이 클라이언트에 노출되지 않아 보안이 강화됩니다.
         if (typeof showLoading === 'function') {
-            showLoading('서버로 SSO 토큰과 Graph API 토큰 전송 중...');
+            showLoading('서버로 SSO 토큰 전송 중 (OBO 방식으로 Graph API 토큰 교환)...');
         }
         const response = await fetch('/auth/teams/sso', {
             method: 'POST',
@@ -196,8 +169,7 @@ async function tryTeamsSSO(callback = null) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
-                ssoToken: ssoToken,
-                graphToken: graphToken
+                ssoToken: ssoToken
             })
         });
         

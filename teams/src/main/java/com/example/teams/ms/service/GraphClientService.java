@@ -53,6 +53,7 @@ public class GraphClientService implements GraphClientPort {
             }
             
             // Access Token을 사용하는 커스텀 TokenCredential 생성
+            // *obo 방식은 OnBehalfOfCredential 사용
             final String token = accessToken;
             TokenCredential tokenCredential = new TokenCredential() {
                 @Override

@@ -1,5 +1,6 @@
 package com.example.teams.auth.controller;
 
+import com.example.teams.auth.config.AzureOAuthConfig;
 import com.example.teams.auth.service.AzureOAuthService;
 import com.example.teams.shared.exception.UnauthorizedException;
 import com.example.teams.shared.port.GraphClientPort;
@@ -37,6 +38,7 @@ public class AzureAuthController {
     private final AzureOAuthService azureOAuthService;
     private final GraphClientPort graphClientPort;
     private final UserService userService;
+    private final AzureOAuthConfig azureOAuthConfig;
     
     /**
      * OAuth Callback 처리 (MS 단독 로그인)
@@ -166,11 +168,13 @@ public class AzureAuthController {
     }
     
     /**
-     * Teams SSO 토큰 처리
-     * Teams에 로그인된 사용자의 SSO 토큰과 Graph API 토큰을 받아서 검증하고 사용자 로그인 연동 처리
+     * Teams SSO 토큰 처리 (OBO 방식)
+     * Teams에 로그인된 사용자의 SSO 토큰을 받아서 OBO 방식으로 Graph API 토큰으로 교환하고 사용자 로그인 연동 처리
      * 
-     * 참고: SSO 토큰은 앱의 App ID URI에 대한 토큰이므로 Graph API를 직접 호출할 수 없습니다.
-     * Graph API를 사용하려면 별도로 Graph API 토큰을 요청해야 합니다.
+     * OBO (On-Behalf-Of) 방식:
+     * - 클라이언트는 SSO 토큰만 서버로 전송
+     * - 서버에서 SSO 토큰을 Graph API 토큰으로 교환
+     * - Graph API 토큰은 클라이언트에 노출되지 않음 (보안 강화)
      */
     @PostMapping("/auth/teams/sso")
     @ResponseBody
@@ -179,7 +183,6 @@ public class AzureAuthController {
             HttpSession session) {
         
         String ssoToken = request.get("ssoToken");
-        String graphToken = request.get("graphToken");
         
         if (ssoToken == null || ssoToken.isEmpty()) {
             log.error("Teams SSO 토큰이 없습니다");
@@ -204,15 +207,20 @@ public class AzureAuthController {
             org.json.JSONObject claims = new org.json.JSONObject(payloadJson);
             
             // 토큰 검증: audience 확인 (앱의 App ID URI와 일치해야 함)
-            String expectedAudience = "api://nwnote.saerom.co.kr/56e05b4e-9682-4e5f-8866-5ba5d76e1cbf";
+            String expectedAudience = azureOAuthConfig.getOauth().getAppIdUri();
             String actualAudience = claims.optString("aud", "");
             
             // SSO 토큰의 경우 aud가 앱의 App ID URI이거나, 
             // 일부 경우에는 다른 형식일 수 있으므로 유연하게 처리
-            if (!actualAudience.equals(expectedAudience) && 
-                !actualAudience.contains("56e05b4e-9682-4e5f-8866-5ba5d76e1cbf")) {
-                log.warn("토큰 audience가 예상과 다릅니다. expected: {}, actual: {}", 
-                    expectedAudience, actualAudience);
+            if (expectedAudience != null && !expectedAudience.isEmpty()) {
+                String clientId = azureOAuthConfig.getOauth().getClientId();
+                if (!actualAudience.equals(expectedAudience) && 
+                    !actualAudience.contains(clientId != null ? clientId : "")) {
+                    log.warn("토큰 audience가 예상과 다릅니다. expected: {}, actual: {}", 
+                        expectedAudience, actualAudience);
+                }
+            } else {
+                log.warn("App ID URI가 설정되지 않았습니다. audience 검증을 건너뜁니다.");
             }
             
             // Scope 확인 (access_as_user가 있어야 함)
@@ -231,68 +239,69 @@ public class AzureAuthController {
             log.info("Teams SSO 토큰 검증 성공 - user: {}, name: {}, tenant: {}", 
                 userPrincipalName, userName, tenantId);
             
-            // Graph API 토큰이 있으면 사용자 정보를 더 자세히 조회하고 로그인 연동 처리
+            // OBO 방식으로 Graph API 토큰 교환
+            String graphToken = null;
             User user = null;
-            if (graphToken != null && !graphToken.isEmpty()) {
-                try {
-                    log.info("Graph API 토큰으로 사용자 정보 조회 및 로그인 연동 시작...");
-                    
-                    // Graph Client 초기화
-                    graphClientPort.initializeGraphClient(graphToken);
-                    
-                    // Microsoft Graph API로 사용자 정보 가져오기
-                    GraphServiceClient graphClient = graphClientPort.getGraphClient();
-                    com.microsoft.graph.models.User graphUser = graphClient.me().get(requestConfiguration -> {
-                        requestConfiguration.queryParameters.select = new String[]{
-                            "id", "displayName", "mail", "userPrincipalName"
-                        };
-                    });
-                    
-                    // Graph API에서 가져온 정보로 업데이트
-                    if (graphUser.getUserPrincipalName() != null && !graphUser.getUserPrincipalName().isEmpty()) {
-                        userPrincipalName = graphUser.getUserPrincipalName();
-                    }
-                    if (graphUser.getDisplayName() != null && !graphUser.getDisplayName().isEmpty()) {
-                        userName = graphUser.getDisplayName();
-                    }
-                    if (graphUser.getId() != null && !graphUser.getId().isEmpty()) {
-                        microsoftUserId = graphUser.getId();
-                    }
-                    
-                    log.info("Graph API 사용자 정보 조회 성공 - userPrincipalName: {}, name: {}, microsoftId: {}", 
-                        userPrincipalName, userName, microsoftUserId);
-                    
-                    // 사용자 로그인 연동 처리
-                    try {
-                        user = userService.findOAuthUser(
-                            microsoftUserId,
-                            graphUser.getMail() != null ? graphUser.getMail() : userPrincipalName,
-                            userName,
-                            userPrincipalName
-                        );
-                        
-                        log.info("사용자 로그인 연동 성공 - userId: {}, email: {}", 
-                            user.getId(), user.getEmail());
-                        
-                        // 세션에 사용자 정보 저장 (앱 로그인과 동일한 형식)
-                        session.setAttribute("userId", user.getId());
-                        session.setAttribute("userEmail", user.getEmail());
-                        session.setAttribute("userName", user.getName());
-                        session.setAttribute("loginType", "SSO");
-                        
-                    } catch (UnauthorizedException e) {
-                        log.warn("사용자 로그인 연동 실패 (등록된 사용자가 아님): {}", e.getMessage());
-                        // 등록된 사용자가 아니어도 SSO 토큰은 저장하여 기본 인증은 가능
-                    }
-                    
-                } catch (Exception e) {
-                    log.error("Graph API 토큰 처리 실패", e);
-                    // Graph API 실패해도 SSO 토큰은 저장하여 기본 인증은 가능
+            try {
+                log.info("OBO 방식으로 Graph API 토큰 교환 시작...");
+                graphToken = azureOAuthService.exchangeTokenForGraph(ssoToken);
+                log.info("OBO 토큰 교환 성공 - Graph API 토큰 획득");
+                
+                // Graph Client 초기화
+                graphClientPort.initializeGraphClient(graphToken);
+                
+                // Microsoft Graph API로 사용자 정보 가져오기
+                GraphServiceClient graphClient = graphClientPort.getGraphClient();
+                com.microsoft.graph.models.User graphUser = graphClient.me().get(requestConfiguration -> {
+                    requestConfiguration.queryParameters.select = new String[]{
+                        "id", "displayName", "mail", "userPrincipalName"
+                    };
+                });
+                
+                // Graph API에서 가져온 정보로 업데이트
+                if (graphUser.getUserPrincipalName() != null && !graphUser.getUserPrincipalName().isEmpty()) {
+                    userPrincipalName = graphUser.getUserPrincipalName();
                 }
+                if (graphUser.getDisplayName() != null && !graphUser.getDisplayName().isEmpty()) {
+                    userName = graphUser.getDisplayName();
+                }
+                if (graphUser.getId() != null && !graphUser.getId().isEmpty()) {
+                    microsoftUserId = graphUser.getId();
+                }
+                
+                log.info("Graph API 사용자 정보 조회 성공 - userPrincipalName: {}, name: {}, microsoftId: {}", 
+                    userPrincipalName, userName, microsoftUserId);
+                
+                // 사용자 로그인 연동 처리
+                try {
+                    user = userService.findOAuthUser(
+                        microsoftUserId,
+                        graphUser.getMail() != null ? graphUser.getMail() : userPrincipalName,
+                        userName,
+                        userPrincipalName
+                    );
+                    
+                    log.info("사용자 로그인 연동 성공 - userId: {}, email: {}", 
+                        user.getId(), user.getEmail());
+                    
+                    // 세션에 사용자 정보 저장 (앱 로그인과 동일한 형식)
+                    session.setAttribute("userId", user.getId());
+                    session.setAttribute("userEmail", user.getEmail());
+                    session.setAttribute("userName", user.getName());
+                    session.setAttribute("loginType", "SSO");
+                    
+                } catch (UnauthorizedException e) {
+                    log.warn("사용자 로그인 연동 실패 (등록된 사용자가 아님): {}", e.getMessage());
+                    // 등록된 사용자가 아니어도 SSO 토큰은 저장하여 기본 인증은 가능
+                }
+                
+            } catch (Exception e) {
+                log.error("OBO 토큰 교환 또는 Graph API 처리 실패", e);
+                // OBO 실패해도 SSO 토큰은 저장하여 기본 인증은 가능
             }
             
-            // SSO 토큰을 세션에 저장 (Graph API 토큰이 없거나 사용자 연동 실패해도 기본 인증은 가능)
-            session.setAttribute("accessToken", graphToken != null && !graphToken.isEmpty() ? graphToken : ssoToken);
+            // Graph API 토큰을 세션에 저장 (OBO로 교환된 토큰)
+            session.setAttribute("accessToken", graphToken != null ? graphToken : ssoToken);
             session.setAttribute("ssoToken", ssoToken); // SSO 토큰임을 표시
             session.setAttribute("userPrincipalName", userPrincipalName);
             session.setAttribute("userName", userName);

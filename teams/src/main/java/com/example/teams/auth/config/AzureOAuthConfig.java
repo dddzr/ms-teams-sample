@@ -31,6 +31,12 @@ public class AzureOAuthConfig {
         private String tenantId;
         private String redirectUri;
         private String scope;
+        /**
+         * Teams SSO App ID URI
+         * Teams manifest.json의 webApplicationInfo.resource와 일치해야 함
+         * 형식: api://{domain}:{port}/{client-id}
+         */
+        private String appIdUri;
     }
     
     /**

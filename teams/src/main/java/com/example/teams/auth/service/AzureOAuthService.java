@@ -167,5 +167,58 @@ public class AzureOAuthService {
     public String getOAuthAuthorizationUrlForTeams() {
         return azureOAuthConfig.getOAuthAuthorizationUrlForTeams();
     }
+    
+    /**
+     * OBO (On-Behalf-Of) 토큰 교환
+     * Teams SSO 토큰을 Graph API 토큰으로 교환합니다.
+     * 
+     * @param ssoToken Teams SSO 토큰 (앱의 App ID URI에 대한 토큰)
+     * @return Graph API Access Token
+     */
+    public String exchangeTokenForGraph(String ssoToken) {
+        try {
+            // OAuth 설정 사용 (azure.oauth.*)
+            var oauth = azureOAuthConfig.getOauth();
+            String clientId = oauth.getClientId();
+            String clientSecret = oauth.getClientSecret();
+            String tokenUrl = azureOAuthConfig.getOAuthTokenUrl();
+            
+            // Graph API scope
+            String scope = "https://graph.microsoft.com/.default";
+            
+            // OBO 토큰 교환 요청
+            RequestBody formBody = new FormBody.Builder()
+                .add("client_id", clientId)
+                .add("client_secret", clientSecret)
+                .add("assertion", ssoToken)
+                .add("requested_token_use", "on_behalf_of")
+                .add("scope", scope)
+                .add("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
+                .build();
+            
+            Request request = new Request.Builder()
+                .url(tokenUrl)
+                .post(formBody)
+                .build();
+            
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "No error body";
+                    log.error("OBO 토큰 교환 실패: {} - {}", response.code(), errorBody);
+                    throw new RuntimeException("OBO 토큰 교환 실패: " + response.code() + " - " + errorBody);
+                }
+                
+                String responseBody = response.body().string();
+                JSONObject json = new JSONObject(responseBody);
+                String accessToken = json.getString("access_token");
+                
+                log.info("OBO 토큰 교환 성공 - Graph API 토큰 획득");
+                return accessToken;
+            }
+        } catch (IOException e) {
+            log.error("OBO 토큰 교환 실패", e);
+            throw new RuntimeException("OBO 토큰 교환 실패", e);
+        }
+    }
 }
 

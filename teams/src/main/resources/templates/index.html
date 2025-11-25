@@ -752,11 +752,24 @@
                 // 이미 로그인되어 있으면 SSO 시도하지 않음
                 if (!isLoggedIn) {
                     // 로그인되지 않았으면 SSO 시도
+                    // 재시도 방지 플래그 (무한 시도 방지)
+                    let ssoAttempted = false;
+                    let checkInit = null;
+                    
                     // Teams 초기화가 완료될 때까지 대기
-                    const checkInit = setInterval(() => {
+                    checkInit = setInterval(() => {
+                        // 이미 SSO 시도했으면 더 이상 시도하지 않음
+                        if (ssoAttempted) {
+                            clearInterval(checkInit);
+                            return;
+                        }
+                        
                         if (isTeamsReady()) {
                             clearInterval(checkInit);
+                            checkInit = null; // interval 참조 제거
+                            
                             if (isTeams()) {
+                                ssoAttempted = true; // SSO 시도 시작 표시
                                 tryTeamsSSO(async (result) => {
                                     console.log('SSO 결과:', result); // 디버깅용
                                     if (result.success) {
@@ -765,6 +778,7 @@
                                         await checkLoginStatus();
                                     } else {
                                         // SSO 실패 시 에러 메시지 표시 (더 상세하게)
+                                        // 실패 후 재시도하지 않음 (무한 시도 방지)
                                         let errorMsg = 'SSO 로그인에 실패했습니다.';
                                         
                                         if (result.error) {
@@ -783,13 +797,23 @@
                                         showErrorMsg(`SSO 오류: ${errorMsg}${errorCode}${errorDetails}`);
                                     }
                                 });
+                            } else {
+                                // Teams 환경이 아니면 interval 정리
+                                clearInterval(checkInit);
+                                checkInit = null;
                             }
                         }
                     }, 100);
                     
-                    // 최대 5초 대기
+                    // 최대 5초 대기 후 interval 정리 (무한 시도 방지)
                     setTimeout(() => {
-                        clearInterval(checkInit);
+                        if (checkInit) {
+                            clearInterval(checkInit);
+                            checkInit = null;
+                            if (!ssoAttempted) {
+                                console.log('Teams 초기화 대기 시간 초과 (5초)');
+                            }
+                        }
                     }, 5000);
                 }
             })();
