@@ -10,6 +10,8 @@ import com.example.teams.shared.port.GraphClientPort;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -18,9 +20,10 @@ import java.time.OffsetDateTime;
 /**
  * GraphServiceClient 초기화 및 관리를 담당하는 구현체
  * GraphClientPort 인터페이스의 구현체입니다.
- * 모든 서비스가 이 서비스를 통해 GraphServiceClient를 공유합니다.
+ * 세션별로 독립적인 인스턴스를 생성하여 사용자별로 분리합니다.
  */
 @Service
+@Scope(value = "session", proxyMode = ScopedProxyMode.TARGET_CLASS)
 @Slf4j
 @RequiredArgsConstructor
 public class GraphClientService implements GraphClientPort {
@@ -28,7 +31,7 @@ public class GraphClientService implements GraphClientPort {
     private final AzureOAuthConfig azureOAuthConfig;
     
     private GraphServiceClient graphClient;
-    private String currentAccessToken;
+    private String currentAccessToken; // OAuth 로그인에서 accessToken이 갱신될 수 있어 토큰 비교가 필요.
     private String currentSsoToken; // OBO 방식 사용 시 SSO 토큰 추적
     
     /**
